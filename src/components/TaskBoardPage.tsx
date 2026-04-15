@@ -1,11 +1,14 @@
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCorners,
+  closestCenter,
+  pointerWithin,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
@@ -94,6 +97,12 @@ function inferDoneStatusId(board: BoardSnapshot) {
   )
 }
 
+function categoryAccentStyle(color: string | null): React.CSSProperties {
+  return {
+    '--category-color': color ?? '#7f7f7a',
+  } as React.CSSProperties
+}
+
 function emptyDraft(board: BoardSnapshot, day: string): TaskDraft {
   return {
     title: '',
@@ -119,7 +128,11 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
   const datePickerRef = useRef<HTMLInputElement | null>(null)
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
@@ -158,6 +171,23 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
   }, [selectedTask])
 
   const doneStatusId = inferDoneStatusId(board)
+
+  const activeTask = useMemo(
+    () =>
+      board.columns
+        .flatMap((column) => column.tasks)
+        .find((task) => task.id === activeTaskId) ?? null,
+    [activeTaskId, board.columns],
+  )
+
+  const collisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args)
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions
+    }
+
+    return closestCenter(args)
+  }
 
   async function refresh() {
     await router.invalidate()
@@ -252,6 +282,24 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
     setIsComposerOpen(false)
   }
 
+  function openDatePicker() {
+    const input = datePickerRef.current as
+      | (HTMLInputElement & { showPicker?: () => void })
+      | null
+
+    if (!input) {
+      return
+    }
+
+    if (typeof input.showPicker === 'function') {
+      input.showPicker()
+      return
+    }
+
+    input.focus()
+    input.click()
+  }
+
   const visibleColumns = board.columns.map((column) => ({
     ...column,
     tasks:
@@ -307,8 +355,15 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
               </svg>
             </button>
 
-            <label className="date-title-picker">
-              <span>{formatHumanDate(board.day)}</span>
+            <div className="date-title-picker">
+              <button
+                type="button"
+                className="date-picker-trigger"
+                onClick={openDatePicker}
+                aria-label="Pick date"
+              >
+                <span>{formatHumanDate(board.day)}</span>
+              </button>
               <input
                 ref={datePickerRef}
                 aria-label="Selected day"
@@ -321,7 +376,7 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                   })
                 }
               />
-            </label>
+            </div>
 
             <button
               type="button"
@@ -362,6 +417,7 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                 key={category.id}
                 type="button"
                 className={categoryFilter === category.id ? 'filter-pill active' : 'filter-pill'}
+                style={categoryAccentStyle(category.color)}
                 onClick={() =>
                   setCategoryFilter((current) =>
                     current === category.id ? null : category.id,
@@ -377,11 +433,12 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
         {view === 'day' ? (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={collisionDetection}
             onDragStart={handleDragStart}
             onDragEnd={(event) => {
               void handleDragEnd(event)
             }}
+            onDragCancel={() => setActiveTaskId(null)}
           >
             <div className="board-columns minimal">
               {visibleColumns.map((column) => (
@@ -395,6 +452,31 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                 />
               ))}
             </div>
+            <DragOverlay dropAnimation={{ duration: 130, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}>
+              {activeTask ? (
+                <article className="task-card drag-overlay-card">
+                  <div className="task-main">
+                    <div className="task-heading">
+                      <h4>{activeTask.title}</h4>
+                    </div>
+                    {activeTask.description ? <p>{activeTask.description}</p> : null}
+                    {activeTask.categories.length > 0 ? (
+                      <div className="task-pill-row">
+                        {activeTask.categories.map((category) => (
+                          <span
+                            key={category.id}
+                            className="category-badge"
+                            style={categoryAccentStyle(category.color)}
+                          >
+                            {category.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         ) : (
           <div className="week-grid">
@@ -573,6 +655,7 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                           ? 'checkbox-pill-label selected'
                           : 'checkbox-pill-label'
                       }
+                      style={categoryAccentStyle(category.color)}
                     >
                       {category.name}
                     </span>
@@ -641,6 +724,7 @@ function StatusColumn({
               task={task}
               onSelect={() => onSelectTask(task)}
               onQuickComplete={() => onQuickComplete(task)}
+              onEdit={() => onSelectTask(task)}
               quickCompleteEnabled={doneStatusId != null && task.statusId !== doneStatusId}
               isDraggingTask={activeTaskId === task.id}
             />
@@ -658,12 +742,14 @@ function TaskCard({
   task,
   onSelect,
   onQuickComplete,
+  onEdit,
   quickCompleteEnabled,
   isDraggingTask,
 }: {
   task: TaskRecord
   onSelect: () => void
   onQuickComplete: () => void
+  onEdit: () => void
   quickCompleteEnabled: boolean
   isDraggingTask: boolean
 }) {
@@ -680,18 +766,28 @@ function TaskCard({
         transition,
       }}
       className={isDragging ? 'task-card dragging' : 'task-card'}
-      onClick={onSelect}
       {...attributes}
       {...listeners}
     >
-      <div className="task-main" role="button" tabIndex={0}>
+      <div
+        className="task-main"
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onSelect()
+          }
+        }}
+      >
         <div className="task-heading">
           <h4>{task.title}</h4>
           <div className="task-trailing">
             {quickCompleteEnabled ? (
               <button
                 type="button"
-                className="icon-button subdued"
+                className="complete-toggle"
                 aria-label={`Mark ${task.title} done`}
                 title="Mark done"
                 onPointerDown={(event) => event.stopPropagation()}
@@ -700,18 +796,41 @@ function TaskCard({
                   onQuickComplete()
                 }}
               >
-                <svg viewBox="0 0 20 20" focusable="false">
+                <svg viewBox="0 0 20 20" focusable="false" aria-hidden="true">
                   <path
-                    d="M16.5 5.5 8.75 13.25 4.5 9"
+                    d="M5 4.75h10a.75.75 0 0 1 .75.75v10a.75.75 0 0 1-.75.75H5a.75.75 0 0 1-.75-.75v-10A.75.75 0 0 1 5 4.75Z"
                     fill="none"
                     stroke="currentColor"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth="2"
+                    strokeWidth="1.4"
                   />
                 </svg>
+                <span>Mark completed</span>
               </button>
             ) : null}
+            <button
+              type="button"
+              className="icon-button subdued"
+              aria-label={`Edit ${task.title}`}
+              title="Edit task"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+                onEdit()
+              }}
+            >
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path
+                  d="m4 13.75 8.8-8.8a1.6 1.6 0 0 1 2.27 0l.98.98a1.6 1.6 0 0 1 0 2.27L7.25 17H4z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </button>
             <span
               className={isDraggingTask ? 'drag-indicator active' : 'drag-indicator'}
               aria-hidden="true"
@@ -729,7 +848,11 @@ function TaskCard({
         {task.categories.length > 0 ? (
           <div className="task-pill-row">
             {task.categories.map((category) => (
-              <span key={category.id} className="category-badge">
+              <span
+                key={category.id}
+                className="category-badge"
+                style={categoryAccentStyle(category.color)}
+              >
                 {category.name}
               </span>
             ))}

@@ -116,8 +116,7 @@
   .date-hero-group {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    min-width: min(36rem, 100%);
+    gap: 0.28rem;
   }
 
   .view-toggle {
@@ -154,23 +153,37 @@
     display: inline-flex;
     align-items: center;
     min-height: 2.5rem;
-    min-width: 0;
-    flex: 1;
+    min-width: fit-content;
+    flex: 0;
     font-size: clamp(1.5rem, 2.4vw, 2.2rem);
     font-weight: 600;
     letter-spacing: -0.03em;
     line-height: 1.1;
   }
 
-  .date-title-picker span {
-    pointer-events: none;
+  .date-picker-trigger {
+    min-height: 2.5rem;
+    padding: 0.15rem 0.28rem;
+    border: 0;
+    border-radius: 0.65rem;
+    background: transparent;
+    justify-content: flex-start;
+    gap: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+  }
+
+  .date-picker-trigger:hover {
+    background: #f1f1ed;
   }
 
   .date-title-picker input {
     position: absolute;
     inset: 0;
     opacity: 0;
-    cursor: pointer;
+    pointer-events: none;
   }
 
   .hero-actions {
@@ -229,9 +242,11 @@
   }
 
   .nav-arrow {
-    width: 2.3rem;
-    min-width: 2.3rem;
+    width: 2.05rem;
+    min-width: 2.05rem;
+    height: 2.05rem;
     padding: 0;
+    border-color: #deded8;
     background: transparent;
   }
 
@@ -244,6 +259,10 @@
   .drag-indicator svg {
     width: 1rem;
     height: 1rem;
+  }
+
+  .nav-arrow svg {
+    display: block;
   }
 
   .board-toolbar {
@@ -260,17 +279,19 @@
   }
 
   .filter-pill {
+    --category-color: #7f7f7a;
     min-height: 2rem;
     padding: 0.28rem 0.75rem;
-    background: transparent;
+    border-color: color-mix(in srgb, var(--category-color) 28%, #d6d6d0);
+    background: color-mix(in srgb, var(--category-color) 9%, #fff);
     color: var(--muted);
     font-size: 0.82rem;
   }
 
   .filter-pill.active {
-    background: var(--panel);
-    color: var(--text);
-    border-color: var(--line-strong);
+    background: color-mix(in srgb, var(--category-color) 20%, #fff);
+    color: color-mix(in srgb, var(--category-color) 72%, #26303d);
+    border-color: color-mix(in srgb, var(--category-color) 42%, #bfc9d8);
   }
 
   .board-columns.minimal {
@@ -405,6 +426,13 @@
     cursor: grabbing;
   }
 
+  .drag-overlay-card {
+    width: min(26rem, 86vw);
+    box-shadow: 0 18px 34px rgba(16, 24, 40, 0.2);
+    transform: rotate(-0.8deg);
+    cursor: grabbing;
+  }
+
   .task-main {
     width: 100%;
     padding: 0.95rem 1rem;
@@ -413,6 +441,12 @@
     background: transparent;
     color: inherit;
     text-align: left;
+    cursor: pointer;
+  }
+
+  .task-main:focus-visible {
+    outline: 2px solid #cdd8ed;
+    outline-offset: -1px;
   }
 
   .task-heading {
@@ -424,9 +458,9 @@
 
   .task-main h4 {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 500;
-    line-height: 1.35;
+    font-size: 1.08rem;
+    font-weight: 620;
+    line-height: 1.3;
     letter-spacing: -0.02em;
   }
 
@@ -459,14 +493,15 @@
 
   .category-badge,
   .checkbox-pill-label {
+    --category-color: #7f7f7a;
     display: inline-flex;
     align-items: center;
     min-height: 1.65rem;
     padding: 0.16rem 0.58rem;
-    border: 1px solid var(--line);
+    border: 1px solid color-mix(in srgb, var(--category-color) 35%, #d7d7d2);
     border-radius: 999px;
-    background: #f3f3f0;
-    color: #555;
+    background: color-mix(in srgb, var(--category-color) 11%, #f8f8f6);
+    color: color-mix(in srgb, var(--category-color) 74%, #364052);
     font-size: 0.76rem;
     line-height: 1;
     white-space: nowrap;
@@ -485,9 +520,9 @@
   }
 
   .checkbox-pill-label.selected {
-    border-color: #c9d7f7;
-    background: #eef3ff;
-    color: #2f4b8f;
+    border-color: color-mix(in srgb, var(--category-color) 50%, #c8d2e4);
+    background: color-mix(in srgb, var(--category-color) 18%, #eff4fb);
+    color: color-mix(in srgb, var(--category-color) 80%, #334968);
   }
 
   .icon-button {
@@ -501,6 +536,22 @@
   .icon-button.subdued {
     background: #f3f3f0;
     color: #7d7d77;
+  }
+
+  .complete-toggle {
+    min-height: 1.9rem;
+    padding: 0.28rem 0.52rem;
+    border-color: #c9cec4;
+    background: #f7f7f3;
+    color: #596055;
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .complete-toggle svg {
+    width: 0.95rem;
+    height: 0.95rem;
   }
 
   .drag-indicator {
@@ -541,18 +592,25 @@
 
   .floating-add {
     position: fixed;
-    right: 1.6rem;
+    left: 1.6rem;
     bottom: 1.6rem;
     z-index: 10;
-    width: 3.25rem;
-    min-width: 3.25rem;
-    height: 3.25rem;
+    width: 3.45rem;
+    min-width: 3.45rem;
+    height: 3.45rem;
     padding: 0;
-    border-color: var(--text);
+    border-color: #193547;
     border-radius: 999px;
-    background: var(--text);
+    background: linear-gradient(145deg, #20475f, #2c5f7d);
     color: white;
-    box-shadow: 0 14px 30px rgba(16, 24, 40, 0.18);
+    box-shadow:
+      0 16px 32px rgba(24, 49, 66, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  }
+
+  .floating-add:hover {
+    transform: translateY(-1px) scale(1.02);
+    background: linear-gradient(145deg, #1d435a, #2a5b77);
   }
 
   .drawer-backdrop.visible {
