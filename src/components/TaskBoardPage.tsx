@@ -557,28 +557,31 @@ function TaskCard({
       <button className="task-main" type="button" onClick={onSelect}>
         <div className="task-heading">
           <h4>{task.title}</h4>
-          <span className={isDraggingTask ? 'drag-indicator active' : 'drag-indicator'} aria-hidden="true">
-            <svg viewBox="0 0 20 20" focusable="false">
-              <path
-                d="M7 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9-11a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"
-                fill="currentColor"
-              />
-            </svg>
-          </span>
+          <div className="task-meta">
+            {task.categories.map((category) => (
+              <span key={category.id} className="category-badge">
+                {category.name}
+              </span>
+            ))}
+            <span
+              className={isDraggingTask ? 'drag-indicator active' : 'drag-indicator'}
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path
+                  d="M7 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9-11a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          </div>
         </div>
         {task.description ? <p>{task.description}</p> : null}
-        <div className="category-badges">
-          {task.categories.map((category) => (
-            <span key={category.id} className="category-badge">
-              {category.name}
-            </span>
-          ))}
-        </div>
       </button>
       <div className="task-actions">
         <button
           type="button"
-          className="secondary small"
+          className="ghost-button"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation()
