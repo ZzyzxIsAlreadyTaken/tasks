@@ -8,6 +8,6 @@ export const Route = createFileRoute('/day/$date')({
 })
 
 function DayRouteComponent() {
-  const board = Route.useLoaderData()
-  return <TaskBoardPage initialBoard={board} />
+  const data = Route.useLoaderData()
+  return <TaskBoardPage initialData={data} />
 }

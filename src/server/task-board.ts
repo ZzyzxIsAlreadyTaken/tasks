@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createServerFn } from '@tanstack/react-start'
 import { getTaskBoardStore } from '~/db/client'
+import { getWeekIsoDates } from '~/lib/dates'
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
@@ -40,7 +41,17 @@ export const loadBoard = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const store = getTaskBoardStore()
     await store.seedDefaults()
-    return store.getBoard(data.day)
+    const board = await store.getBoard(data.day)
+    const weekDates = getWeekIsoDates(data.day)
+    const weekDays = await Promise.all(weekDates.map((day) => store.getBoard(day)))
+
+    return {
+      board,
+      week: {
+        anchorDay: data.day,
+        days: weekDays,
+      },
+    }
   })
 
 export const saveTask = createServerFn({ method: 'POST' })

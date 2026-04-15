@@ -113,6 +113,13 @@
     gap: 1rem 1.25rem;
   }
 
+  .date-hero-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: min(36rem, 100%);
+  }
+
   .view-toggle {
     display: inline-flex;
     align-items: center;
@@ -147,7 +154,8 @@
     display: inline-flex;
     align-items: center;
     min-height: 2.5rem;
-    min-width: min(32rem, 100%);
+    min-width: 0;
+    flex: 1;
     font-size: clamp(1.5rem, 2.4vw, 2.2rem);
     font-weight: 600;
     letter-spacing: -0.03em;
@@ -227,6 +235,10 @@
     background: transparent;
   }
 
+  .nav-arrow.inline {
+    background: transparent;
+  }
+
   .nav-arrow svg,
   .icon-button svg,
   .drag-indicator svg {
@@ -267,6 +279,79 @@
     gap: 0;
     align-items: start;
     margin-top: 0.5rem;
+  }
+
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin-top: 0.6rem;
+  }
+
+  .week-day-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.8rem;
+    min-height: 15rem;
+    padding: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--panel);
+    text-align: left;
+    box-shadow: var(--shadow);
+  }
+
+  .week-day-card.active {
+    border-color: var(--line-strong);
+  }
+
+  .week-day-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .week-day-header strong {
+    font-size: 0.95rem;
+  }
+
+  .week-day-header span {
+    color: var(--muted-soft);
+    font-size: 0.78rem;
+  }
+
+  .week-day-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .week-task-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.55rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.7rem;
+    background: #fbfbfa;
+  }
+
+  .week-task-row span {
+    font-size: 0.84rem;
+    line-height: 1.25;
+  }
+
+  .week-task-row em {
+    color: var(--muted-soft);
+    font-size: 0.74rem;
+    font-style: normal;
+  }
+
+  .week-empty {
+    color: var(--muted-soft);
+    font-size: 0.82rem;
   }
 
   .status-column {
@@ -310,8 +395,9 @@
     border: 1px solid var(--line);
     border-radius: 0.7rem;
     background: var(--panel);
-    box-shadow: var(--shadow);
+    box-shadow: 0 4px 14px rgba(16, 24, 40, 0.04);
     cursor: grab;
+    will-change: transform;
   }
 
   .task-card.dragging {
@@ -451,6 +537,22 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 160ms ease;
+  }
+
+  .floating-add {
+    position: fixed;
+    right: 1.6rem;
+    bottom: 1.6rem;
+    z-index: 10;
+    width: 3.25rem;
+    min-width: 3.25rem;
+    height: 3.25rem;
+    padding: 0;
+    border-color: var(--text);
+    border-radius: 999px;
+    background: var(--text);
+    color: white;
+    box-shadow: 0 14px 30px rgba(16, 24, 40, 0.18);
   }
 
   .drawer-backdrop.visible {
@@ -633,6 +735,10 @@
       gap: 1.2rem;
     }
 
+    .week-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .status-column {
       min-height: 0;
       padding: 0;
@@ -659,14 +765,16 @@
       align-items: flex-start;
     }
 
-    .hero-actions {
-      margin-left: 0;
-      justify-content: flex-start;
+    .date-title-picker {
+      font-size: 1.45rem;
     }
 
-    .date-title-picker {
-      min-width: 100%;
-      font-size: 1.45rem;
+    .date-hero-group {
+      width: 100%;
+    }
+
+    .hero-actions {
+      display: none;
     }
 
     .two-up {
@@ -675,6 +783,10 @@
 
     .task-drawer {
       width: 100vw;
+    }
+
+    .week-grid {
+      grid-template-columns: 1fr;
     }
   }
 }

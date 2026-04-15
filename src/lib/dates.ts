@@ -1,4 +1,12 @@
-import { addDays, format, isValid, parseISO } from 'date-fns'
+import {
+  addDays,
+  eachDayOfInterval,
+  endOfWeek,
+  format,
+  isValid,
+  parseISO,
+  startOfWeek,
+} from 'date-fns'
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
@@ -28,4 +36,16 @@ export function shiftIsoDate(value: string, amount: number) {
 
 export function formatHumanDate(value: string) {
   return format(parseISO(assertIsoDate(value)), 'EEEE, MMMM d, yyyy')
+}
+
+export function formatShortDayLabel(value: string) {
+  return format(parseISO(assertIsoDate(value)), 'EEE d')
+}
+
+export function getWeekIsoDates(value: string) {
+  const date = parseISO(assertIsoDate(value))
+  return eachDayOfInterval({
+    start: startOfWeek(date, { weekStartsOn: 1 }),
+    end: endOfWeek(date, { weekStartsOn: 1 }),
+  }).map((day) => format(day, 'yyyy-MM-dd'))
 }

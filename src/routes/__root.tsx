@@ -83,9 +83,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               Daily Task Board
             </Link>
             <nav className="topnav">
-              <Link to="/" activeOptions={{ exact: true }}>
-                Today
-              </Link>
               <Link to="/settings">Settings</Link>
             </nav>
           </header>

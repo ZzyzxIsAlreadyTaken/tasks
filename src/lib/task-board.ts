@@ -36,6 +36,16 @@ export type BoardSnapshot = {
   allCategories: CategoryRecord[]
 }
 
+export type WeekSnapshot = {
+  anchorDay: string
+  days: BoardSnapshot[]
+}
+
+export type BoardRouteData = {
+  board: BoardSnapshot
+  week: WeekSnapshot
+}
+
 export type SettingsSnapshot = {
   statuses: Array<StatusRecord & { taskCount: number }>
   categories: Array<CategoryRecord & { taskCount: number }>

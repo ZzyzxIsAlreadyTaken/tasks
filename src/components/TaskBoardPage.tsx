@@ -17,11 +17,17 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Link, useNavigate, useRouter } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
-import { formatHumanDate, shiftIsoDate } from '~/lib/dates'
-import type { BoardSnapshot, TaskDraft, TaskRecord } from '~/lib/task-board'
+import {
+  formatHumanDate,
+  formatShortDayLabel,
+  shiftIsoDate,
+} from '~/lib/dates'
+import type { BoardRouteData, BoardSnapshot, TaskDraft, TaskRecord } from '~/lib/task-board'
 import { deleteTask, saveBoardOrder, saveTask } from '~/server/task-board'
+
+type BoardView = 'day' | 'week'
 
 function moveTaskAcrossColumns(
   board: BoardSnapshot,
@@ -41,7 +47,8 @@ function moveTaskAcrossColumns(
   const task = board.columns[sourceColumnIndex].tasks[sourceTaskIndex]
   const targetColumnIndex = board.columns.findIndex(
     (column) =>
-      column.status.id === overId || column.tasks.some((candidate) => candidate.id === overId),
+      column.status.id === overId ||
+      column.tasks.some((candidate) => candidate.id === overId),
   )
 
   if (!task || targetColumnIndex === -1) {
@@ -49,8 +56,11 @@ function moveTaskAcrossColumns(
   }
 
   const targetColumn = board.columns[targetColumnIndex]
-  const overTaskIndex = targetColumn.tasks.findIndex((candidate) => candidate.id === overId)
-  const insertIndex = overTaskIndex === -1 ? targetColumn.tasks.length : overTaskIndex
+  const overTaskIndex = targetColumn.tasks.findIndex(
+    (candidate) => candidate.id === overId,
+  )
+  const insertIndex =
+    overTaskIndex === -1 ? targetColumn.tasks.length : overTaskIndex
 
   const nextColumns = board.columns.map((column) => ({
     ...column,
@@ -94,29 +104,34 @@ function emptyDraft(board: BoardSnapshot, day: string): TaskDraft {
   }
 }
 
-export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot }) {
+export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) {
   const navigate = useNavigate()
   const router = useRouter()
-  const [board, setBoard] = useState(initialBoard)
+  const [data, setData] = useState(initialData)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [draft, setDraft] = useState<TaskDraft>(() =>
-    emptyDraft(initialBoard, initialBoard.day),
+    emptyDraft(initialData.board, initialData.board.day),
   )
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
+  const [view, setView] = useState<BoardView>('day')
   const datePickerRef = useRef<HTMLInputElement | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   useEffect(() => {
-    setBoard(initialBoard)
+    setData(initialData)
     setDraft((current) =>
-      current.id ? current : emptyDraft(initialBoard, initialBoard.day),
+      current.id ? current : emptyDraft(initialData.board, initialData.board.day),
     )
-  }, [initialBoard])
+  }, [initialData])
+
+  const board = data.board
+  const week = data.week
 
   const selectedTask = useMemo(
     () =>
@@ -148,23 +163,6 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
     await router.invalidate()
   }
 
-  async function persistBoard(nextBoard: BoardSnapshot) {
-    setBoard(nextBoard)
-    await saveBoardOrder({
-      data: {
-        day: nextBoard.day,
-        columns: nextBoard.columns.map((column) => ({
-          statusId: column.status.id,
-          taskIds: column.tasks.map((task) => task.id),
-        })),
-      },
-    })
-
-    startTransition(() => {
-      void refresh()
-    })
-  }
-
   async function handleDragEnd(event: DragEndEvent) {
     setActiveTaskId(null)
 
@@ -182,7 +180,22 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
       return
     }
 
-    await persistBoard(nextBoard)
+    setData((current) => ({ ...current, board: nextBoard }))
+
+    try {
+      await saveBoardOrder({
+        data: {
+          day: nextBoard.day,
+          columns: nextBoard.columns.map((column) => ({
+            statusId: column.status.id,
+            taskIds: column.tasks.map((task) => task.id),
+          })),
+        },
+      })
+    } catch (error) {
+      setData(initialData)
+      throw error
+    }
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -192,9 +205,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
   async function handleSaveTask(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     await saveTask({ data: draft })
-    setDraft(emptyDraft(board, board.day))
-    setSelectedTaskId(null)
-    setIsComposerOpen(false)
+    closeComposer()
     startTransition(() => {
       void refresh()
     })
@@ -202,9 +213,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
 
   async function handleDeleteTask(taskId: string) {
     await deleteTask({ data: { taskId } })
-    setSelectedTaskId(null)
-    setDraft(emptyDraft(board, board.day))
-    setIsComposerOpen(false)
+    closeComposer()
     startTransition(() => {
       void refresh()
     })
@@ -231,16 +240,6 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
     })
   }
 
-  const visibleColumns = board.columns.map((column) => ({
-    ...column,
-    tasks:
-      categoryFilter == null
-        ? column.tasks
-        : column.tasks.filter((task) =>
-            task.categories.some((category) => category.id === categoryFilter),
-          ),
-  }))
-
   function openComposerForNewTask() {
     setSelectedTaskId(null)
     setDraft(emptyDraft(board, board.day))
@@ -253,37 +252,41 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
     setIsComposerOpen(false)
   }
 
+  const visibleColumns = board.columns.map((column) => ({
+    ...column,
+    tasks:
+      categoryFilter == null
+        ? column.tasks
+        : column.tasks.filter((task) =>
+            task.categories.some((category) => category.id === categoryFilter),
+          ),
+  }))
+
   return (
     <>
       <section className="board-page">
         <div className="board-hero">
           <div className="view-toggle" aria-label="Board view">
-            <button type="button" className="view-tab active">
+            <button
+              type="button"
+              className={view === 'day' ? 'view-tab active' : 'view-tab'}
+              onClick={() => setView('day')}
+            >
               Day
             </button>
-            <button type="button" className="view-tab" disabled>
+            <button
+              type="button"
+              className={view === 'week' ? 'view-tab active' : 'view-tab'}
+              onClick={() => setView('week')}
+            >
               Week
             </button>
           </div>
-          <label className="date-title-picker">
-            <span>{formatHumanDate(board.day)}</span>
-            <input
-              ref={datePickerRef}
-              aria-label="Selected day"
-              type="date"
-              value={board.day}
-              onChange={(event) =>
-                navigate({
-                  to: '/day/$date',
-                  params: { date: event.target.value },
-                })
-              }
-            />
-          </label>
-          <div className="hero-actions">
+
+          <div className="date-hero-group">
             <button
               type="button"
-              className="nav-arrow"
+              className="nav-arrow inline"
               aria-label="Previous day"
               onClick={() =>
                 navigate({
@@ -303,26 +306,26 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
                 />
               </svg>
             </button>
+
+            <label className="date-title-picker">
+              <span>{formatHumanDate(board.day)}</span>
+              <input
+                ref={datePickerRef}
+                aria-label="Selected day"
+                type="date"
+                value={board.day}
+                onChange={(event) =>
+                  navigate({
+                    to: '/day/$date',
+                    params: { date: event.target.value },
+                  })
+                }
+              />
+            </label>
+
             <button
               type="button"
-              className="nav-arrow"
-              aria-label="Open day picker"
-              onClick={() => datePickerRef.current?.showPicker?.()}
-            >
-              <svg viewBox="0 0 20 20" focusable="false">
-                <path
-                  d="M5.5 3.5v2m9-2v2M4 7.5h12m-10.5 3h2m2.5 0h2m-6.5 3h2m2.5 0h2M5 5.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.3"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="nav-arrow"
+              className="nav-arrow inline"
               aria-label="Next day"
               onClick={() =>
                 navigate({
@@ -342,16 +345,6 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
                 />
               </svg>
             </button>
-            <button
-              type="button"
-              className="primary compact"
-              onClick={openComposerForNewTask}
-            >
-              Add task
-            </button>
-            <Link to="/settings" className="minimal-link">
-              Settings
-            </Link>
           </div>
         </div>
 
@@ -381,29 +374,87 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
           </div>
         </div>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={(event) => {
-            void handleDragEnd(event)
-          }}
-        >
-          <div className="board-columns minimal">
-            {visibleColumns.map((column) => (
-              <StatusColumn
-                key={column.status.id}
-                column={column}
-                onSelectTask={(task) => {
-                  setSelectedTaskId(task.id)
-                }}
-                onQuickComplete={(task) => void handleQuickComplete(task)}
-                doneStatusId={doneStatusId}
-                activeTaskId={activeTaskId}
-              />
+        {view === 'day' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={(event) => {
+              void handleDragEnd(event)
+            }}
+          >
+            <div className="board-columns minimal">
+              {visibleColumns.map((column) => (
+                <StatusColumn
+                  key={column.status.id}
+                  column={column}
+                  onSelectTask={(task) => setSelectedTaskId(task.id)}
+                  onQuickComplete={(task) => void handleQuickComplete(task)}
+                  doneStatusId={doneStatusId}
+                  activeTaskId={activeTaskId}
+                />
+              ))}
+            </div>
+          </DndContext>
+        ) : (
+          <div className="week-grid">
+            {week.days.map((day) => (
+              <button
+                key={day.day}
+                type="button"
+                className={day.day === board.day ? 'week-day-card active' : 'week-day-card'}
+                onClick={() =>
+                  navigate({
+                    to: '/day/$date',
+                    params: { date: day.day },
+                  })
+                }
+              >
+                <div className="week-day-header">
+                  <strong>{formatShortDayLabel(day.day)}</strong>
+                  <span>{day.columns.reduce((sum, column) => sum + column.tasks.length, 0)}</span>
+                </div>
+                <div className="week-day-list">
+                  {day.columns
+                    .flatMap((column) =>
+                      column.tasks.map((task) => ({
+                        ...task,
+                        statusName: column.status.name,
+                      })),
+                    )
+                    .slice(0, 6)
+                    .map((task) => (
+                      <div key={task.id} className="week-task-row">
+                        <span>{task.title}</span>
+                        <em>{task.statusName}</em>
+                      </div>
+                    ))}
+                  {day.columns.flatMap((column) => column.tasks).length === 0 ? (
+                    <div className="week-empty">No tasks</div>
+                  ) : null}
+                </div>
+              </button>
             ))}
           </div>
-        </DndContext>
+        )}
+
+        <button
+          type="button"
+          className="floating-add"
+          aria-label="Add task"
+          onClick={openComposerForNewTask}
+        >
+          <svg viewBox="0 0 20 20" focusable="false">
+            <path
+              d="M10 4v12M4 10h12"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.8"
+            />
+          </svg>
+        </button>
       </section>
 
       <div
@@ -416,7 +467,12 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
             <p className="eyebrow">{draft.id ? 'Edit Task' : 'Add Task'}</p>
             <h3>{draft.id ? 'Update task details' : 'Create a task for the day'}</h3>
           </div>
-          <button type="button" className="nav-arrow" onClick={closeComposer} aria-label="Close editor">
+          <button
+            type="button"
+            className="nav-arrow"
+            onClick={closeComposer}
+            aria-label="Close editor"
+          >
             <svg viewBox="0 0 20 20" focusable="false">
               <path
                 d="m5 5 10 10M15 5 5 15"
@@ -624,10 +680,11 @@ function TaskCard({
         transition,
       }}
       className={isDragging ? 'task-card dragging' : 'task-card'}
+      onClick={onSelect}
       {...attributes}
       {...listeners}
     >
-      <button className="task-main" type="button" onClick={onSelect}>
+      <div className="task-main" role="button" tabIndex={0}>
         <div className="task-heading">
           <h4>{task.title}</h4>
           <div className="task-trailing">
@@ -678,7 +735,7 @@ function TaskCard({
             ))}
           </div>
         ) : null}
-      </button>
+      </div>
     </article>
   )
 }
