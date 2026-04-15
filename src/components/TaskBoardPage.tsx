@@ -7,6 +7,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -104,6 +105,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
     emptyDraft(initialBoard, initialBoard.day),
   )
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -163,6 +165,8 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
   }
 
   async function handleDragEnd(event: DragEndEvent) {
+    setActiveTaskId(null)
+
     if (!event.over || !event.active.id) {
       return
     }
@@ -178,6 +182,10 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
     }
 
     await persistBoard(nextBoard)
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveTaskId(String(event.active.id))
   }
 
   async function handleSaveTask(event: React.FormEvent<HTMLFormElement>) {
@@ -242,7 +250,15 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
           </p>
         </div>
         <div className="date-controls">
-          <button onClick={() => navigate({ to: '/day/$date', params: { date: shiftIsoDate(board.day, -1) } })}>
+          <button
+            type="button"
+            onClick={() =>
+              navigate({
+                to: '/day/$date',
+                params: { date: shiftIsoDate(board.day, -1) },
+              })
+            }
+          >
             Previous
           </button>
           <input
@@ -256,7 +272,16 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
               })
             }
           />
-          <button onClick={() => navigate({ to: '/day/$date', params: { date: shiftIsoDate(board.day, 1) } })}>
+          <button
+            type="button"
+            className="primary"
+            onClick={() =>
+              navigate({
+                to: '/day/$date',
+                params: { date: shiftIsoDate(board.day, 1) },
+              })
+            }
+          >
             Next
           </button>
         </div>
@@ -287,6 +312,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
         <div className="toolbar-actions">
           <button
             type="button"
+            className="primary"
             onClick={() => {
               setSelectedTaskId(null)
               setDraft(emptyDraft(board, board.day))
@@ -302,6 +328,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
           onDragEnd={(event) => {
             void handleDragEnd(event)
           }}
@@ -314,6 +341,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
                 onSelectTask={(task) => setSelectedTaskId(task.id)}
                 onQuickComplete={(task) => void handleQuickComplete(task)}
                 doneStatusId={doneStatusId}
+                activeTaskId={activeTaskId}
               />
             ))}
           </div>
@@ -406,14 +434,18 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
                           }))
                         }
                       />
-                      <span>{category.name}</span>
+                      <span className={isChecked ? 'checkbox-pill-label selected' : 'checkbox-pill-label'}>
+                        {category.name}
+                      </span>
                     </label>
                   )
                 })}
               </div>
             </fieldset>
             <div className="form-actions">
-              <button type="submit">{draft.id ? 'Save task' : 'Add task'}</button>
+              <button type="submit" className="primary">
+                {draft.id ? 'Save task' : 'Add task'}
+              </button>
               <button
                 type="button"
                 className="secondary"
@@ -446,11 +478,13 @@ function StatusColumn({
   onSelectTask,
   onQuickComplete,
   doneStatusId,
+  activeTaskId,
 }: {
   column: BoardSnapshot['columns'][number]
   onSelectTask: (task: TaskRecord) => void
   onQuickComplete: (task: TaskRecord) => void
   doneStatusId: string | null
+  activeTaskId: string | null
 }) {
   const { setNodeRef } = useDroppable({
     id: column.status.id,
@@ -462,11 +496,10 @@ function StatusColumn({
       className={column.status.isArchived ? 'status-column archived' : 'status-column'}
     >
       <header>
-        <div className="column-badge" style={{ backgroundColor: column.status.color }} />
-        <div>
-          <h3>{column.status.name}</h3>
-          <p>{column.tasks.length} tasks</p>
-        </div>
+        <span className="status-pill" style={{ backgroundColor: column.status.color }}>
+          {column.status.name}
+        </span>
+        <p>{column.tasks.length} tasks</p>
       </header>
       <SortableContext
         items={column.tasks.map((task) => task.id)}
@@ -480,6 +513,7 @@ function StatusColumn({
               onSelect={() => onSelectTask(task)}
               onQuickComplete={() => onQuickComplete(task)}
               quickCompleteEnabled={doneStatusId != null && task.statusId !== doneStatusId}
+              isDraggingTask={activeTaskId === task.id}
             />
           ))}
           {column.tasks.length === 0 ? (
@@ -496,11 +530,13 @@ function TaskCard({
   onSelect,
   onQuickComplete,
   quickCompleteEnabled,
+  isDraggingTask,
 }: {
   task: TaskRecord
   onSelect: () => void
   onQuickComplete: () => void
   quickCompleteEnabled: boolean
+  isDraggingTask: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
@@ -515,9 +551,21 @@ function TaskCard({
         transition,
       }}
       className={isDragging ? 'task-card dragging' : 'task-card'}
+      {...attributes}
+      {...listeners}
     >
       <button className="task-main" type="button" onClick={onSelect}>
-        <h4>{task.title}</h4>
+        <div className="task-heading">
+          <h4>{task.title}</h4>
+          <span className={isDraggingTask ? 'drag-indicator active' : 'drag-indicator'} aria-hidden="true">
+            <svg viewBox="0 0 20 20" focusable="false">
+              <path
+                d="M7 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9-11a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+        </div>
         {task.description ? <p>{task.description}</p> : null}
         <div className="category-badges">
           {task.categories.map((category) => (
@@ -528,23 +576,41 @@ function TaskCard({
         </div>
       </button>
       <div className="task-actions">
-        <button type="button" className="secondary small" onClick={onSelect}>
+        <button
+          type="button"
+          className="secondary small"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+            onSelect()
+          }}
+        >
           Edit
         </button>
         {quickCompleteEnabled ? (
-          <button type="button" className="small" onClick={onQuickComplete}>
-            Check off
+          <button
+            type="button"
+            className="icon-button complete-button"
+            aria-label={`Mark ${task.title} done`}
+            title="Mark done"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              onQuickComplete()
+            }}
+          >
+            <svg viewBox="0 0 20 20" focusable="false">
+              <path
+                d="M16.5 5.5 8.75 13.25 4.5 9"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
           </button>
         ) : null}
-        <button
-          type="button"
-          className="drag-handle small"
-          aria-label={`Drag ${task.title}`}
-          {...attributes}
-          {...listeners}
-        >
-          Drag
-        </button>
       </div>
     </article>
   )

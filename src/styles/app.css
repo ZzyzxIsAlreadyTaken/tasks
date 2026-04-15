@@ -46,6 +46,12 @@
     font: inherit;
   }
 
+  input,
+  select,
+  textarea {
+    color-scheme: light;
+  }
+
   button {
     cursor: pointer;
   }
@@ -118,7 +124,7 @@
   }
 
   .topnav .active,
-  button:not(.secondary):not(.danger):not(.chip):not(.small) {
+  button.primary {
     background: var(--ink);
     color: white;
   }
@@ -155,6 +161,11 @@
   .settings-card,
   .task-editor {
     padding: 1rem;
+  }
+
+  .task-editor {
+    position: sticky;
+    top: 1rem;
   }
 
   .subtle {
@@ -222,6 +233,7 @@
   .status-column header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     margin-bottom: 1rem;
   }
@@ -239,12 +251,24 @@
     font-size: 0.92rem;
   }
 
-  .column-badge,
   .color-dot {
     width: 14px;
     height: 14px;
     border-radius: 999px;
     flex: none;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.18);
   }
 
   .task-stack,
@@ -260,10 +284,12 @@
     border-radius: 18px;
     background: var(--paper-strong);
     box-shadow: 0 10px 25px rgba(88, 63, 24, 0.08);
+    cursor: grab;
   }
 
   .task-card.dragging {
     opacity: 0.7;
+    cursor: grabbing;
   }
 
   .task-main {
@@ -273,6 +299,13 @@
     background: transparent;
     border: 0;
     color: inherit;
+  }
+
+  .task-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
   .task-main h4 {
@@ -295,14 +328,40 @@
   }
 
   .category-badge,
-  .checkbox-pill span {
+  .checkbox-pill-label {
     display: inline-flex;
     align-items: center;
     padding: 0.35rem 0.7rem;
     border-radius: 999px;
-    background: rgba(245, 158, 11, 0.12);
-    color: #7c2d12;
+    border: 1px solid #d7cfbe;
+    background: #f7f2e8;
+    color: #5b5547;
     font-size: 0.85rem;
+  }
+
+  .category-badge {
+    border-color: #e1d7c4;
+    background: #f6efdf;
+    color: #6d5f3f;
+  }
+
+  .checkbox-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .checkbox-pill input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .checkbox-pill-label.selected {
+    border-color: var(--accent-soft);
+    background: #f8d695;
+    color: #623a06;
   }
 
   .task-actions {
@@ -332,6 +391,42 @@
     color: var(--ink);
   }
 
+  .icon-button {
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .icon-button svg,
+  .drag-indicator svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .complete-button {
+    background: #e2f3e9;
+    color: #17643c;
+    border-color: #a7d4b9;
+  }
+
+  .drag-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: #efe6d6;
+    color: #8a7550;
+    flex: none;
+  }
+
+  .drag-indicator.active {
+    background: #dfd0b7;
+    color: #5b4927;
+  }
+
   .task-form,
   .inline-form {
     display: flex;
@@ -355,8 +450,21 @@
     padding: 0.85rem 0.95rem;
     border: 1px solid var(--line);
     border-radius: 16px;
-    background: var(--surface);
+    background: #fffdfa;
     color: var(--ink);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #94846b;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid rgba(245, 158, 11, 0.28);
+    outline-offset: 1px;
+    border-color: var(--accent-soft);
   }
 
   .two-up,
@@ -375,16 +483,6 @@
     margin-bottom: 0.5rem;
     font-weight: 600;
     color: var(--ink);
-  }
-
-  .checkbox-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  .checkbox-pill input {
-    width: auto;
   }
 
   .editor-header {
