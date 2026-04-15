@@ -27,5 +27,5 @@ export function shiftIsoDate(value: string, amount: number) {
 }
 
 export function formatHumanDate(value: string) {
-  return format(parseISO(assertIsoDate(value)), 'EEEE, MMMM d')
+  return format(parseISO(assertIsoDate(value)), 'EEEE, MMMM d, yyyy')
 }

@@ -79,10 +79,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <div className="app-shell">
           <header className="topbar">
-            <div>
-              <p className="eyebrow">Daily Task Board</p>
-              <h1>Plan the day, then move the work.</h1>
-            </div>
+            <Link to="/" className="brand-mark" activeOptions={{ exact: true }}>
+              Daily Task Board
+            </Link>
             <nav className="topnav">
               <Link to="/" activeOptions={{ exact: true }}>
                 Today

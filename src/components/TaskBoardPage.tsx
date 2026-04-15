@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link, useNavigate, useRouter } from '@tanstack/react-router'
-import { startTransition, useEffect, useMemo, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { formatHumanDate, shiftIsoDate } from '~/lib/dates'
 import type { BoardSnapshot, TaskDraft, TaskRecord } from '~/lib/task-board'
 import { deleteTask, saveBoardOrder, saveTask } from '~/server/task-board'
@@ -98,14 +98,14 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
   const navigate = useNavigate()
   const router = useRouter()
   const [board, setBoard] = useState(initialBoard)
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
-    initialBoard.columns.flatMap((column) => column.tasks)[0]?.id ?? null,
-  )
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [draft, setDraft] = useState<TaskDraft>(() =>
     emptyDraft(initialBoard, initialBoard.day),
   )
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
+  const [isComposerOpen, setIsComposerOpen] = useState(false)
+  const datePickerRef = useRef<HTMLInputElement | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -113,9 +113,9 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
 
   useEffect(() => {
     setBoard(initialBoard)
-    const firstTask = initialBoard.columns.flatMap((column) => column.tasks)[0]
-    setSelectedTaskId(firstTask?.id ?? null)
-    setDraft(emptyDraft(initialBoard, initialBoard.day))
+    setDraft((current) =>
+      current.id ? current : emptyDraft(initialBoard, initialBoard.day),
+    )
   }, [initialBoard])
 
   const selectedTask = useMemo(
@@ -139,6 +139,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
       statusId: selectedTask.statusId,
       categoryIds: selectedTask.categories.map((category) => category.id),
     })
+    setIsComposerOpen(true)
   }, [selectedTask])
 
   const doneStatusId = inferDoneStatusId(board)
@@ -193,6 +194,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
     await saveTask({ data: draft })
     setDraft(emptyDraft(board, board.day))
     setSelectedTaskId(null)
+    setIsComposerOpen(false)
     startTransition(() => {
       void refresh()
     })
@@ -202,6 +204,7 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
     await deleteTask({ data: { taskId } })
     setSelectedTaskId(null)
     setDraft(emptyDraft(board, board.day))
+    setIsComposerOpen(false)
     startTransition(() => {
       void refresh()
     })
@@ -238,93 +241,146 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
           ),
   }))
 
-  return (
-    <section className="board-page">
-      <div className="board-header">
-        <div>
-          <p className="eyebrow">Daily Focus</p>
-          <h2>{formatHumanDate(board.day)}</h2>
-          <p className="subtle">
-            Drag tasks between statuses, or move them to another day from the
-            editor.
-          </p>
-        </div>
-        <div className="date-controls">
-          <button
-            type="button"
-            onClick={() =>
-              navigate({
-                to: '/day/$date',
-                params: { date: shiftIsoDate(board.day, -1) },
-              })
-            }
-          >
-            Previous
-          </button>
-          <input
-            aria-label="Selected day"
-            type="date"
-            value={board.day}
-            onChange={(event) =>
-              navigate({
-                to: '/day/$date',
-                params: { date: event.target.value },
-              })
-            }
-          />
-          <button
-            type="button"
-            className="primary"
-            onClick={() =>
-              navigate({
-                to: '/day/$date',
-                params: { date: shiftIsoDate(board.day, 1) },
-              })
-            }
-          >
-            Next
-          </button>
-        </div>
-      </div>
+  function openComposerForNewTask() {
+    setSelectedTaskId(null)
+    setDraft(emptyDraft(board, board.day))
+    setIsComposerOpen(true)
+  }
 
-      <div className="toolbar">
-        <div className="chip-row">
-          <button
-            className={categoryFilter == null ? 'chip chip-active' : 'chip'}
-            onClick={() => setCategoryFilter(null)}
-          >
-            All tasks
-          </button>
-          {board.allCategories.map((category) => (
+  function closeComposer() {
+    setSelectedTaskId(null)
+    setDraft(emptyDraft(board, board.day))
+    setIsComposerOpen(false)
+  }
+
+  return (
+    <>
+      <section className="board-page">
+        <div className="board-hero">
+          <div className="view-toggle" aria-label="Board view">
+            <button type="button" className="view-tab active">
+              Day
+            </button>
+            <button type="button" className="view-tab" disabled>
+              Week
+            </button>
+          </div>
+          <label className="date-title-picker">
+            <span>{formatHumanDate(board.day)}</span>
+            <input
+              ref={datePickerRef}
+              aria-label="Selected day"
+              type="date"
+              value={board.day}
+              onChange={(event) =>
+                navigate({
+                  to: '/day/$date',
+                  params: { date: event.target.value },
+                })
+              }
+            />
+          </label>
+          <div className="hero-actions">
             <button
-              key={category.id}
-              className={categoryFilter === category.id ? 'chip chip-active' : 'chip'}
+              type="button"
+              className="nav-arrow"
+              aria-label="Previous day"
               onClick={() =>
-                setCategoryFilter((current) =>
-                  current === category.id ? null : category.id,
-                )
+                navigate({
+                  to: '/day/$date',
+                  params: { date: shiftIsoDate(board.day, -1) },
+                })
               }
             >
-              {category.name}
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path
+                  d="M11.5 4.5 6 10l5.5 5.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.7"
+                />
+              </svg>
             </button>
-          ))}
+            <button
+              type="button"
+              className="nav-arrow"
+              aria-label="Open day picker"
+              onClick={() => datePickerRef.current?.showPicker?.()}
+            >
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path
+                  d="M5.5 3.5v2m9-2v2M4 7.5h12m-10.5 3h2m2.5 0h2m-6.5 3h2m2.5 0h2M5 5.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.3"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="nav-arrow"
+              aria-label="Next day"
+              onClick={() =>
+                navigate({
+                  to: '/day/$date',
+                  params: { date: shiftIsoDate(board.day, 1) },
+                })
+              }
+            >
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path
+                  d="m8.5 4.5 5.5 5.5-5.5 5.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.7"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="primary compact"
+              onClick={openComposerForNewTask}
+            >
+              Add task
+            </button>
+            <Link to="/settings" className="minimal-link">
+              Settings
+            </Link>
+          </div>
         </div>
-        <div className="toolbar-actions">
-          <button
-            type="button"
-            className="primary"
-            onClick={() => {
-              setSelectedTaskId(null)
-              setDraft(emptyDraft(board, board.day))
-            }}
-          >
-            New task
-          </button>
-          <Link to="/settings">Manage statuses and categories</Link>
-        </div>
-      </div>
 
-      <div className="board-layout">
+        <div className="board-toolbar">
+          <div className="filter-row">
+            <button
+              type="button"
+              className={categoryFilter == null ? 'filter-pill active' : 'filter-pill'}
+              onClick={() => setCategoryFilter(null)}
+            >
+              All
+            </button>
+            {board.allCategories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                className={categoryFilter === category.id ? 'filter-pill active' : 'filter-pill'}
+                onClick={() =>
+                  setCategoryFilter((current) =>
+                    current === category.id ? null : category.id,
+                  )
+                }
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -333,12 +389,14 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
             void handleDragEnd(event)
           }}
         >
-          <div className="board-columns">
+          <div className="board-columns minimal">
             {visibleColumns.map((column) => (
               <StatusColumn
                 key={column.status.id}
                 column={column}
-                onSelectTask={(task) => setSelectedTaskId(task.id)}
+                onSelectTask={(task) => {
+                  setSelectedTaskId(task.id)
+                }}
                 onQuickComplete={(task) => void handleQuickComplete(task)}
                 doneStatusId={doneStatusId}
                 activeTaskId={activeTaskId}
@@ -346,130 +404,147 @@ export function TaskBoardPage({ initialBoard }: { initialBoard: BoardSnapshot })
             ))}
           </div>
         </DndContext>
+      </section>
 
-        <aside className="task-editor">
-          <div className="editor-header">
-            <div>
-              <p className="eyebrow">{draft.id ? 'Edit task' : 'Create task'}</p>
-              <h3>{draft.id ? 'Update the details' : 'Add work for this day'}</h3>
-            </div>
+      <div
+        className={isComposerOpen ? 'drawer-backdrop visible' : 'drawer-backdrop'}
+        onClick={closeComposer}
+      />
+      <aside className={isComposerOpen ? 'task-drawer open' : 'task-drawer'}>
+        <div className="drawer-header">
+          <div>
+            <p className="eyebrow">{draft.id ? 'Edit Task' : 'Add Task'}</p>
+            <h3>{draft.id ? 'Update task details' : 'Create a task for the day'}</h3>
           </div>
+          <button type="button" className="nav-arrow" onClick={closeComposer} aria-label="Close editor">
+            <svg viewBox="0 0 20 20" focusable="false">
+              <path
+                d="m5 5 10 10M15 5 5 15"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.6"
+              />
+            </svg>
+          </button>
+        </div>
 
-          <form className="task-form" onSubmit={(event) => void handleSaveTask(event)}>
+        <form className="task-form minimal" onSubmit={(event) => void handleSaveTask(event)}>
+          <label>
+            Title
+            <input
+              required
+              placeholder="What needs doing?"
+              value={draft.title}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, title: event.target.value }))
+              }
+            />
+          </label>
+          <label>
+            Notes
+            <textarea
+              rows={5}
+              placeholder="Optional details"
+              value={draft.description}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <div className="two-up">
             <label>
-              Title
+              Day
               <input
-                required
-                value={draft.title}
+                type="date"
+                value={draft.day}
                 onChange={(event) =>
-                  setDraft((current) => ({ ...current, title: event.target.value }))
+                  setDraft((current) => ({ ...current, day: event.target.value }))
                 }
               />
             </label>
             <label>
-              Description
-              <textarea
-                rows={4}
-                value={draft.description}
+              Status
+              <select
+                value={draft.statusId}
                 onChange={(event) =>
                   setDraft((current) => ({
                     ...current,
-                    description: event.target.value,
+                    statusId: event.target.value,
                   }))
                 }
-              />
-            </label>
-            <div className="two-up">
-              <label>
-                Day
-                <input
-                  type="date"
-                  value={draft.day}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, day: event.target.value }))
-                  }
-                />
-              </label>
-              <label>
-                Status
-                <select
-                  value={draft.statusId}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      statusId: event.target.value,
-                    }))
-                  }
-                >
-                  {board.allStatuses
-                    .filter(
-                      (status) =>
-                        !status.isArchived || status.id === draft.statusId,
-                    )
-                    .map((status) => (
-                      <option key={status.id} value={status.id}>
-                        {status.name}
-                        {status.isArchived ? ' (archived)' : ''}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            </div>
-            <fieldset>
-              <legend>Categories</legend>
-              <div className="category-picker">
-                {board.allCategories.map((category) => {
-                  const isChecked = draft.categoryIds.includes(category.id)
-                  return (
-                    <label key={category.id} className="checkbox-pill">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() =>
-                          setDraft((current) => ({
-                            ...current,
-                            categoryIds: isChecked
-                              ? current.categoryIds.filter((id) => id !== category.id)
-                              : [...current.categoryIds, category.id],
-                          }))
-                        }
-                      />
-                      <span className={isChecked ? 'checkbox-pill-label selected' : 'checkbox-pill-label'}>
-                        {category.name}
-                      </span>
-                    </label>
+              >
+                {board.allStatuses
+                  .filter(
+                    (status) =>
+                      !status.isArchived || status.id === draft.statusId,
                   )
-                })}
-              </div>
-            </fieldset>
-            <div className="form-actions">
-              <button type="submit" className="primary">
-                {draft.id ? 'Save task' : 'Add task'}
-              </button>
+                  .map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.name}
+                      {status.isArchived ? ' (archived)' : ''}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+          <fieldset>
+            <legend>Categories</legend>
+            <div className="category-picker">
+              {board.allCategories.map((category) => {
+                const isChecked = draft.categoryIds.includes(category.id)
+                return (
+                  <label key={category.id} className="checkbox-pill">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          categoryIds: isChecked
+                            ? current.categoryIds.filter((id) => id !== category.id)
+                            : [...current.categoryIds, category.id],
+                        }))
+                      }
+                    />
+                    <span
+                      className={
+                        isChecked
+                          ? 'checkbox-pill-label selected'
+                          : 'checkbox-pill-label'
+                      }
+                    >
+                      {category.name}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </fieldset>
+          <div className="form-actions">
+            <button type="submit" className="primary">
+              {draft.id ? 'Save task' : 'Add task'}
+            </button>
+            <button type="button" className="secondary" onClick={closeComposer}>
+              Cancel
+            </button>
+            {draft.id ? (
               <button
                 type="button"
-                className="secondary"
-                onClick={() => {
-                  setSelectedTaskId(null)
-                  setDraft(emptyDraft(board, board.day))
-                }}
+                className="danger"
+                onClick={() => void handleDeleteTask(draft.id!)}
               >
-                Clear
+                Delete
               </button>
-              {draft.id ? (
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={() => void handleDeleteTask(draft.id!)}
-                >
-                  Delete
-                </button>
-              ) : null}
-            </div>
-          </form>
-        </aside>
-      </div>
-    </section>
+            ) : null}
+          </div>
+        </form>
+      </aside>
+    </>
   )
 }
 
@@ -496,10 +571,8 @@ function StatusColumn({
       className={column.status.isArchived ? 'status-column archived' : 'status-column'}
     >
       <header>
-        <span className="status-pill" style={{ backgroundColor: column.status.color }}>
-          {column.status.name}
-        </span>
-        <p>{column.tasks.length} tasks</p>
+        <h3>{column.status.name}</h3>
+        <p>{column.tasks.length}</p>
       </header>
       <SortableContext
         items={column.tasks.map((task) => task.id)}
@@ -557,12 +630,31 @@ function TaskCard({
       <button className="task-main" type="button" onClick={onSelect}>
         <div className="task-heading">
           <h4>{task.title}</h4>
-          <div className="task-meta">
-            {task.categories.map((category) => (
-              <span key={category.id} className="category-badge">
-                {category.name}
-              </span>
-            ))}
+          <div className="task-trailing">
+            {quickCompleteEnabled ? (
+              <button
+                type="button"
+                className="icon-button subdued"
+                aria-label={`Mark ${task.title} done`}
+                title="Mark done"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onQuickComplete()
+                }}
+              >
+                <svg viewBox="0 0 20 20" focusable="false">
+                  <path
+                    d="M16.5 5.5 8.75 13.25 4.5 9"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </button>
+            ) : null}
             <span
               className={isDraggingTask ? 'drag-indicator active' : 'drag-indicator'}
               aria-hidden="true"
@@ -577,44 +669,16 @@ function TaskCard({
           </div>
         </div>
         {task.description ? <p>{task.description}</p> : null}
-      </button>
-      <div className="task-actions">
-        <button
-          type="button"
-          className="ghost-button"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation()
-            onSelect()
-          }}
-        >
-          Edit
-        </button>
-        {quickCompleteEnabled ? (
-          <button
-            type="button"
-            className="icon-button complete-button"
-            aria-label={`Mark ${task.title} done`}
-            title="Mark done"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation()
-              onQuickComplete()
-            }}
-          >
-            <svg viewBox="0 0 20 20" focusable="false">
-              <path
-                d="M16.5 5.5 8.75 13.25 4.5 9"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </svg>
-          </button>
+        {task.categories.length > 0 ? (
+          <div className="task-pill-row">
+            {task.categories.map((category) => (
+              <span key={category.id} className="category-badge">
+                {category.name}
+              </span>
+            ))}
+          </div>
         ) : null}
-      </div>
+      </button>
     </article>
   )
 }
