@@ -13,17 +13,25 @@ export function getTaskBoardStore() {
     return store
   }
 
-  const dataDir = resolve(process.cwd(), '.data')
-  mkdirSync(dataDir, { recursive: true })
+  try {
+    const dataDir = resolve(process.cwd(), '.data')
+    mkdirSync(dataDir, { recursive: true })
 
-  const sqlite = new Database(resolve(dataDir, 'daily-task-board.sqlite'))
-  sqlite.pragma('journal_mode = WAL')
+    process.stderr.write(`[db] opening sqlite database in ${dataDir}\n`)
+    const sqlite = new Database(resolve(dataDir, 'daily-task-board.sqlite'))
+    sqlite.pragma('journal_mode = WAL')
 
-  const db = drizzle(sqlite, { schema })
-  migrate(db, {
-    migrationsFolder: resolve(process.cwd(), 'drizzle'),
-  })
+    const db = drizzle(sqlite, { schema })
+    process.stderr.write('[db] running migrations\n')
+    migrate(db, {
+      migrationsFolder: resolve(process.cwd(), 'drizzle'),
+    })
 
-  store = createTaskBoardStore(db)
-  return store
+    process.stderr.write('[db] database ready\n')
+    store = createTaskBoardStore(db)
+    return store
+  } catch (err) {
+    process.stderr.write(`[db] failed to initialize database: ${err instanceof Error ? err.stack : String(err)}\n`)
+    throw err
+  }
 }
