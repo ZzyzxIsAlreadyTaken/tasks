@@ -1,5 +1,5 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { SqlJsDatabase } from 'drizzle-orm/sql-js'
 import { categories, schema, statuses, taskCategories, tasks } from './schema'
 import { assertIsoDate } from '~/lib/dates'
 import type {
@@ -14,7 +14,7 @@ import type {
   UpsertStatusInput,
 } from '~/lib/task-board'
 
-type Database = BetterSQLite3Database<typeof schema>
+type Database = SqlJsDatabase<typeof schema>
 
 const DEFAULT_STATUSES = [
   { name: 'Todo', color: '#d97706' },
@@ -92,7 +92,7 @@ function groupCategoriesByTask(
   }, {})
 }
 
-export function createTaskBoardStore(db: Database) {
+export function createTaskBoardStore(db: Database, persist: () => void = () => {}) {
   return {
     async seedDefaults() {
       const statusCount = await db.select({ value: count() }).from(statuses)
@@ -120,6 +120,7 @@ export function createTaskBoardStore(db: Database) {
           })),
         )
       }
+      persist()
     },
 
     async getBoard(day: string): Promise<BoardSnapshot> {
@@ -266,6 +267,7 @@ export function createTaskBoardStore(db: Database) {
           .where(eq(tasks.id, task.id))
 
         await replaceTaskCategories(db, task.id, task.categoryIds)
+        persist()
         return task.id
       }
 
@@ -281,11 +283,13 @@ export function createTaskBoardStore(db: Database) {
         updatedAt: timestamp,
       })
       await replaceTaskCategories(db, taskId, task.categoryIds)
+      persist()
       return taskId
     },
 
     async deleteTask(taskId: string) {
       await db.delete(tasks).where(eq(tasks.id, taskId))
+      persist()
     },
 
     async saveBoardOrder(input: SaveBoardOrderInput) {
@@ -304,6 +308,7 @@ export function createTaskBoardStore(db: Database) {
             .where(eq(tasks.id, taskId))
         }
       }
+      persist()
     },
 
     async getSettings(): Promise<SettingsSnapshot> {
@@ -355,6 +360,7 @@ export function createTaskBoardStore(db: Database) {
             color: input.color,
           })
           .where(eq(statuses.id, input.id))
+        persist()
         return input.id
       }
 
@@ -367,6 +373,7 @@ export function createTaskBoardStore(db: Database) {
         position: countResult[0]?.value ?? 0,
         isArchived: false,
       })
+      persist()
       return id
     },
 
@@ -374,6 +381,7 @@ export function createTaskBoardStore(db: Database) {
       for (const [position, id] of statusIds.entries()) {
         await db.update(statuses).set({ position }).where(eq(statuses.id, id))
       }
+      persist()
     },
 
     async archiveStatus(statusId: string) {
@@ -383,6 +391,7 @@ export function createTaskBoardStore(db: Database) {
           isArchived: true,
         })
         .where(eq(statuses.id, statusId))
+      persist()
     },
 
     async upsertCategory(input: UpsertCategoryInput) {
@@ -399,6 +408,7 @@ export function createTaskBoardStore(db: Database) {
             color: input.color ?? null,
           })
           .where(eq(categories.id, input.id))
+        persist()
         return input.id
       }
 
@@ -411,6 +421,7 @@ export function createTaskBoardStore(db: Database) {
         position: countResult[0]?.value ?? 0,
         isArchived: false,
       })
+      persist()
       return id
     },
 
@@ -418,6 +429,7 @@ export function createTaskBoardStore(db: Database) {
       for (const [position, id] of categoryIds.entries()) {
         await db.update(categories).set({ position }).where(eq(categories.id, id))
       }
+      persist()
     },
 
     async archiveCategory(categoryId: string) {
@@ -427,6 +439,7 @@ export function createTaskBoardStore(db: Database) {
           isArchived: true,
         })
         .where(eq(categories.id, categoryId))
+      persist()
     },
   }
 }

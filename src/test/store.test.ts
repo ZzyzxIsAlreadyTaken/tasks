@@ -1,36 +1,32 @@
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { resolve } from 'node:path'
+import initSqlJs from 'sql.js'
+import { drizzle } from 'drizzle-orm/sql-js'
+import { migrate } from 'drizzle-orm/sql-js/migrator'
 import { describe, expect, it } from 'vitest'
 import { schema } from '~/db/schema'
 import { createTaskBoardStore } from '~/db/store'
 
-function createHarness() {
-  const directory = mkdtempSync(join(tmpdir(), 'daily-task-board-'))
-  const sqlite = new Database(join(directory, 'test.sqlite'))
-  const db = drizzle(sqlite, { schema })
+async function createHarness() {
+  const SQL = await initSqlJs()
+  const sqliteDb = new SQL.Database()
+  const db = drizzle(sqliteDb, { schema })
   migrate(db, {
     migrationsFolder: resolve(process.cwd(), 'drizzle'),
   })
   const store = createTaskBoardStore(db)
 
   return {
-    directory,
-    sqlite,
+    sqliteDb,
     store,
     cleanup() {
-      sqlite.close()
-      rmSync(directory, { recursive: true, force: true })
+      sqliteDb.close()
     },
   }
 }
 
 describe('task board store', () => {
   it('creates, moves, and deletes tasks', async () => {
-    const harness = createHarness()
+    const harness = await createHarness()
     await harness.store.seedDefaults()
 
     const board = await harness.store.getBoard('2026-04-15')
@@ -74,7 +70,7 @@ describe('task board store', () => {
   })
 
   it('persists explicit order within each status column', async () => {
-    const harness = createHarness()
+    const harness = await createHarness()
     await harness.store.seedDefaults()
 
     const board = await harness.store.getBoard('2026-04-15')
@@ -122,7 +118,7 @@ describe('task board store', () => {
   })
 
   it('keeps archived statuses visible for existing tasks while blocking new assignment', async () => {
-    const harness = createHarness()
+    const harness = await createHarness()
     await harness.store.seedDefaults()
 
     const board = await harness.store.getBoard('2026-04-15')
