@@ -1,36 +1,41 @@
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { resolve } from 'node:path'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import postgres from 'postgres'
 import { describe, expect, it } from 'vitest'
 import { schema } from '~/db/schema'
 import { createTaskBoardStore } from '~/db/store'
 
-function createHarness() {
-  const directory = mkdtempSync(join(tmpdir(), 'daily-task-board-'))
-  const sqlite = new Database(join(directory, 'test.sqlite'))
-  const db = drizzle(sqlite, { schema })
-  migrate(db, {
+async function createHarness() {
+  const databaseUrl =
+    process.env.TEST_DATABASE_URL ??
+    process.env.DATABASE_URL ??
+    'postgresql://taskboard:taskboard@localhost:5432/taskboard'
+  const schemaName = `test_${crypto.randomUUID().replace(/-/g, '')}`
+  const sql = postgres(databaseUrl, { max: 1 })
+  await sql.unsafe(`create schema "${schemaName}"`)
+  await sql.unsafe(`set search_path to "${schemaName}"`)
+
+  const db = drizzle(sql, { schema })
+  await migrate(db, {
     migrationsFolder: resolve(process.cwd(), 'drizzle'),
   })
   const store = createTaskBoardStore(db)
 
   return {
-    directory,
-    sqlite,
+    schemaName,
+    sql,
     store,
-    cleanup() {
-      sqlite.close()
-      rmSync(directory, { recursive: true, force: true })
+    async cleanup() {
+      await sql.unsafe(`drop schema if exists "${schemaName}" cascade`)
+      await sql.end()
     },
   }
 }
 
 describe('task board store', () => {
   it('creates, moves, and deletes tasks', async () => {
-    const harness = createHarness()
+    const harness = await createHarness()
     await harness.store.seedDefaults()
 
     const board = await harness.store.getBoard('2026-04-15')
@@ -70,11 +75,11 @@ describe('task board store', () => {
     updatedBoard = await harness.store.getBoard('2026-04-16')
     expect(updatedBoard.columns.flatMap((column) => column.tasks)).toHaveLength(0)
 
-    harness.cleanup()
+    await harness.cleanup()
   })
 
   it('persists explicit order within each status column', async () => {
-    const harness = createHarness()
+    const harness = await createHarness()
     await harness.store.seedDefaults()
 
     const board = await harness.store.getBoard('2026-04-15')
@@ -118,11 +123,11 @@ describe('task board store', () => {
         ?.tasks.map((task) => task.title),
     ).toEqual(['Second', 'First'])
 
-    harness.cleanup()
+    await harness.cleanup()
   })
 
   it('keeps archived statuses visible for existing tasks while blocking new assignment', async () => {
-    const harness = createHarness()
+    const harness = await createHarness()
     await harness.store.seedDefaults()
 
     const board = await harness.store.getBoard('2026-04-15')
@@ -162,6 +167,6 @@ describe('task board store', () => {
       categoryIds: [],
     })
 
-    harness.cleanup()
+    await harness.cleanup()
   })
 })

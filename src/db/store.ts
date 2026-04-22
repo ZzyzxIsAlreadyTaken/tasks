@@ -1,5 +1,5 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { categories, schema, statuses, taskCategories, tasks } from './schema'
 import { assertIsoDate } from '~/lib/dates'
 import type {
@@ -14,7 +14,7 @@ import type {
   UpsertStatusInput,
 } from '~/lib/task-board'
 
-type Database = BetterSQLite3Database<typeof schema>
+type Database = PostgresJsDatabase<typeof schema>
 
 const DEFAULT_STATUSES = [
   { name: 'Todo', color: '#d97706' },

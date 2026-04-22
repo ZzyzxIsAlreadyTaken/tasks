@@ -1,22 +1,22 @@
-import { primaryKey, sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { boolean, integer, pgTable, primaryKey, text } from 'drizzle-orm/pg-core'
 
-export const statuses = sqliteTable('statuses', {
+export const statuses = pgTable('statuses', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   color: text('color').notNull(),
   position: integer('position').notNull(),
-  isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
+  isArchived: boolean('is_archived').notNull().default(false),
 })
 
-export const categories = sqliteTable('categories', {
+export const categories = pgTable('categories', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   color: text('color'),
   position: integer('position').notNull(),
-  isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
+  isArchived: boolean('is_archived').notNull().default(false),
 })
 
-export const tasks = sqliteTable('tasks', {
+export const tasks = pgTable('tasks', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   description: text('description'),
@@ -29,7 +29,7 @@ export const tasks = sqliteTable('tasks', {
   updatedAt: text('updated_at').notNull(),
 })
 
-export const taskCategories = sqliteTable(
+export const taskCategories = pgTable(
   'task_categories',
   {
     taskId: text('task_id')

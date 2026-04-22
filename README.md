@@ -1,11 +1,11 @@
 # Daily Task Board
 
-A local-first task board built with `TanStack Start`, `Drizzle ORM`, and `SQLite`.
+A local-first task board built with `TanStack Start`, `Drizzle ORM`, and `PostgreSQL`.
 
 ## What it does
 
 - Creates separate task boards per day
-- Stores data locally in SQLite
+- Stores data in PostgreSQL
 - Lets you drag tasks between custom statuses
 - Supports multi-category tagging
 - Lets you move the same task to a different day
@@ -14,6 +14,8 @@ A local-first task board built with `TanStack Start`, `Drizzle ORM`, and `SQLite
 ## Development
 
 ```sh
+docker compose up -d
+export DATABASE_URL=postgresql://taskboard:taskboard@localhost:5432/taskboard
 npm install
 npm run dev
 ```
@@ -28,7 +30,13 @@ Generate a new Drizzle migration after schema changes:
 npm run db:generate
 ```
 
-The local SQLite database is created in `.data/daily-task-board.sqlite`.
+The app reads `DATABASE_URL` for database access.
+
+Run schema migrations:
+
+```sh
+npm run db:migrate
+```
 
 ## Verification
 
