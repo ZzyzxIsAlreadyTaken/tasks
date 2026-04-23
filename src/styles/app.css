@@ -123,15 +123,21 @@
     gap: 0.75rem;
     margin: -0.4rem -2rem 0;
     padding: 0.6rem 2rem 0.75rem;
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: var(--bg);
     border-bottom: 1px solid transparent;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .board-sticky.is-scrolled {
     border-bottom-color: var(--line);
+    box-shadow: 0 4px 12px -10px rgba(16, 24, 40, 0.18);
+  }
+
+  .board-sticky .board-hero {
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.85rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
   }
 
   .board-hero {
@@ -408,13 +414,6 @@
     border-color: color-mix(in srgb, #4a6cf7 28%, var(--line));
   }
 
-  .week-day-card.active {
-    border-color: color-mix(in srgb, #4a6cf7 55%, var(--line-strong));
-    box-shadow:
-      inset 3px 0 0 #4a6cf7,
-      var(--shadow);
-  }
-
   .week-day-header {
     display: flex;
     align-items: flex-start;
@@ -572,7 +571,7 @@
 
   .week-task-row {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     align-items: center;
     gap: 0.45rem;
     padding: 0.42rem 0.55rem;
@@ -583,21 +582,13 @@
     text-align: left;
     line-height: 1.2;
     cursor: pointer;
-    transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    transition: border-color 0.12s ease, background 0.12s ease;
   }
 
   .week-task-row:hover,
   .week-task-row:focus-visible {
     border-color: color-mix(in srgb, var(--task-status-color, var(--line-strong)) 55%, var(--line));
     background: #fff;
-  }
-
-  .week-task-row .week-task-dot {
-    width: 0.42rem;
-    height: 0.42rem;
-    border-radius: 999px;
-    background: var(--task-status-color, var(--muted-soft));
-    flex-shrink: 0;
   }
 
   .week-task-title {
@@ -648,28 +639,6 @@
     color: var(--muted-soft);
     font-size: 0.82rem;
     padding: 0.5rem 0.1rem;
-  }
-
-  .week-day-open {
-    margin-top: auto;
-    padding: 0.3rem 0;
-    color: var(--muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    background: transparent;
-    border: 0;
-    border-top: 1px dashed var(--line);
-    text-align: left;
-    cursor: pointer;
-    min-height: 0;
-    border-radius: 0;
-    transition: color 0.12s ease;
-  }
-
-  .week-day-open:hover,
-  .week-day-open:focus-visible {
-    color: var(--text);
   }
 
   .status-column {
@@ -946,10 +915,11 @@
   .drawer-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 15, 15, 0.18);
+    z-index: 15;
+    background: rgba(15, 15, 15, 0.42);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 160ms ease;
+    transition: opacity 180ms ease;
   }
 
   .floating-add {

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { CategoryRecord, StatusRecord, TaskDraft } from '~/lib/task-board'
 
 function categoryAccentStyle(color: string | null): React.CSSProperties {
@@ -25,6 +26,24 @@ export function TaskEditorDrawer({
   onSave: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>
   onDelete: (taskId: string) => void | Promise<void>
 }) {
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKey)
+    }
+  }, [open, onClose])
+
   function toggleCategory(id: string) {
     setDraft((current) => ({
       ...current,

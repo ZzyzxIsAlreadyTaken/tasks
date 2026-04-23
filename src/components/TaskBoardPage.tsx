@@ -134,16 +134,12 @@ function emptyDraft(board: BoardSnapshot, day: string): TaskDraft {
 
 function WeekDayCard({
   day,
-  isSelected,
   doneStatusId,
-  onOpenDay,
   onSelectTask,
   onQuickAdd,
 }: {
   day: BoardSnapshot
-  isSelected: boolean
   doneStatusId: string | null
-  onOpenDay: () => void
   onSelectTask: (task: TaskRecord) => void
   onQuickAdd: () => void
 }) {
@@ -153,7 +149,6 @@ function WeekDayCard({
 
   const classes = [
     'week-day-card',
-    isSelected ? 'active' : '',
     today ? 'is-today' : '',
     weekend ? 'is-weekend' : '',
   ]
@@ -207,15 +202,6 @@ function WeekDayCard({
           )}
         </div>
       )}
-
-      <button
-        type="button"
-        className="week-day-open"
-        onClick={onOpenDay}
-        aria-label={`Open ${day.day} in day view`}
-      >
-        Open day →
-      </button>
     </div>
   )
 }
@@ -309,7 +295,6 @@ function WeekTaskRow({
       style={{ '--task-status-color': statusColor } as React.CSSProperties}
       onClick={onSelect}
     >
-      <span className="week-task-dot" aria-hidden="true" />
       <span className="week-task-title">{task.title}</span>
       {task.categories.length > 0 ? (
         <span className="week-task-chips">
@@ -329,9 +314,7 @@ function WeekTaskRow({
             </span>
           ) : null}
         </span>
-      ) : (
-        <span aria-hidden="true" />
-      )}
+      ) : null}
     </button>
   )
 }
@@ -576,6 +559,9 @@ export function TaskBoardPage({
   const heroLabel =
     view === 'week' ? formatWeekRange(board.day) : formatHumanDate(board.day)
   const weekNumber = view === 'week' ? getIsoWeekNumber(board.day) : null
+  const navStep = view === 'week' ? 7 : 1
+  const previousLabel = view === 'week' ? 'Previous week' : 'Previous day'
+  const nextLabel = view === 'week' ? 'Next week' : 'Next day'
 
   return (
     <>
@@ -603,11 +589,11 @@ export function TaskBoardPage({
               <button
                 type="button"
                 className="nav-arrow inline"
-                aria-label="Previous day"
+                aria-label={previousLabel}
                 onClick={() =>
                   navigate({
                     to: '/day/$date',
-                    params: { date: shiftIsoDate(board.day, -1) },
+                    params: { date: shiftIsoDate(board.day, -navStep) },
                     search: { edit: undefined },
                   })
                 }
@@ -656,11 +642,11 @@ export function TaskBoardPage({
               <button
                 type="button"
                 className="nav-arrow inline"
-                aria-label="Next day"
+                aria-label={nextLabel}
                 onClick={() =>
                   navigate({
                     to: '/day/$date',
-                    params: { date: shiftIsoDate(board.day, 1) },
+                    params: { date: shiftIsoDate(board.day, navStep) },
                     search: { edit: undefined },
                   })
                 }
@@ -763,15 +749,7 @@ export function TaskBoardPage({
               <WeekDayCard
                 key={day.day}
                 day={day}
-                isSelected={day.day === board.day}
                 doneStatusId={doneStatusId}
-                onOpenDay={() =>
-                  navigate({
-                    to: '/day/$date',
-                    params: { date: day.day },
-                    search: { edit: undefined },
-                  })
-                }
                 onSelectTask={(task) => setSelectedTaskId(task.id)}
                 onQuickAdd={() => openComposerForNewTask({ day: day.day })}
               />
