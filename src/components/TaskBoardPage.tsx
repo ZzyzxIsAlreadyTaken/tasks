@@ -134,12 +134,18 @@ function emptyDraft(board: BoardSnapshot, day: string): TaskDraft {
 
 function WeekDayCard({
   day,
+  isSelected,
   doneStatusId,
+  onSelectDay,
+  onOpenDay,
   onSelectTask,
   onQuickAdd,
 }: {
   day: BoardSnapshot
+  isSelected: boolean
   doneStatusId: string | null
+  onSelectDay: () => void
+  onOpenDay: () => void
   onSelectTask: (task: TaskRecord) => void
   onQuickAdd: () => void
 }) {
@@ -149,14 +155,40 @@ function WeekDayCard({
 
   const classes = [
     'week-day-card',
+    isSelected ? 'is-selected' : '',
     today ? 'is-today' : '',
     weekend ? 'is-weekend' : '',
   ]
     .filter(Boolean)
     .join(' ')
 
+  function handleCardClick(event: React.MouseEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest('button, details, summary, a')) {
+      return
+    }
+    onSelectDay()
+  }
+
+  function handleCardKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) {
+      return
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onSelectDay()
+    }
+  }
+
   return (
-    <div className={classes}>
+    <div
+      className={classes}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      aria-label={`Select ${day.day}`}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+    >
       <div className="week-day-header">
         <div className="week-day-date-block">
           <span className="week-day-weekday">{getIsoWeekdayShort(day.day)}</span>
@@ -202,6 +234,15 @@ function WeekDayCard({
           )}
         </div>
       )}
+
+      <button
+        type="button"
+        className="week-open-day-link"
+        onClick={onOpenDay}
+        aria-label={`Open ${day.day} in day view`}
+      >
+        Open <span aria-hidden="true">→</span>
+      </button>
     </div>
   )
 }
@@ -749,7 +790,23 @@ export function TaskBoardPage({
               <WeekDayCard
                 key={day.day}
                 day={day}
+                isSelected={day.day === board.day}
                 doneStatusId={doneStatusId}
+                onSelectDay={() =>
+                  navigate({
+                    to: '/day/$date',
+                    params: { date: day.day },
+                    search: { edit: undefined },
+                  })
+                }
+                onOpenDay={() => {
+                  setView('day')
+                  navigate({
+                    to: '/day/$date',
+                    params: { date: day.day },
+                    search: { edit: undefined },
+                  })
+                }}
                 onSelectTask={(task) => setSelectedTaskId(task.id)}
                 onQuickAdd={() => openComposerForNewTask({ day: day.day })}
               />

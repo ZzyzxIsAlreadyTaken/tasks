@@ -414,6 +414,50 @@
     border-color: color-mix(in srgb, #4a6cf7 28%, var(--line));
   }
 
+  .week-day-card:hover {
+    border-color: var(--line-strong);
+  }
+
+  .week-day-card:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--text) 55%, transparent);
+    outline-offset: 2px;
+  }
+
+  .week-day-card.is-selected {
+    border-style: dashed;
+    border-width: 2px;
+    border-color: color-mix(in srgb, var(--text) 28%, var(--line-strong));
+    padding: calc(0.85rem - 1px) calc(0.9rem - 1px) calc(0.9rem - 1px);
+  }
+
+  .week-open-day-link {
+    align-self: flex-end;
+    margin-top: auto;
+    min-height: 0;
+    padding: 0.18rem 0.42rem;
+    border: 0;
+    border-radius: 0.4rem;
+    background: transparent;
+    color: var(--muted-soft);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.18rem;
+    cursor: pointer;
+    transition: color 0.12s ease, background 0.12s ease;
+  }
+
+  .week-open-day-link:hover,
+  .week-open-day-link:focus-visible {
+    color: var(--text);
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   .week-day-header {
     display: flex;
     align-items: flex-start;
