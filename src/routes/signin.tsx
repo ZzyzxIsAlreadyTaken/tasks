@@ -13,7 +13,7 @@ export const Route = createFileRoute('/signin')({
       throw redirect({
         to: '/day/$date',
         params: { date: getTodayIsoDate() },
-        search: { edit: undefined },
+        search: { edit: undefined, view: undefined },
       })
     }
   },
@@ -39,7 +39,7 @@ function SignInRouteComponent() {
     await navigate({
       to: '/day/$date',
       params: { date: getTodayIsoDate() },
-      search: { edit: undefined },
+      search: { edit: undefined, view: undefined },
     })
   }
 

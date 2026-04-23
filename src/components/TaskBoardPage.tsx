@@ -363,9 +363,11 @@ function WeekTaskRow({
 export function TaskBoardPage({
   initialData,
   initialEditTaskId = null,
+  initialView = 'day',
 }: {
   initialData: BoardRouteData
   initialEditTaskId?: string | null
+  initialView?: BoardView
 }) {
   const navigate = useNavigate()
   const router = useRouter()
@@ -379,7 +381,8 @@ export function TaskBoardPage({
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
-  const [view, setView] = useState<BoardView>('day')
+  const view: BoardView = initialView
+  const viewSearchValue: 'week' | undefined = view === 'week' ? 'week' : undefined
   const [isScrolled, setIsScrolled] = useState(false)
   const datePickerRef = useRef<HTMLInputElement | null>(null)
 
@@ -613,14 +616,28 @@ export function TaskBoardPage({
               <button
                 type="button"
                 className={view === 'day' ? 'view-tab active' : 'view-tab'}
-                onClick={() => setView('day')}
+                onClick={() =>
+                  navigate({
+                    to: '/day/$date',
+                    params: { date: board.day },
+                    search: { edit: undefined, view: undefined },
+                    replace: true,
+                  })
+                }
               >
                 Day
               </button>
               <button
                 type="button"
                 className={view === 'week' ? 'view-tab active' : 'view-tab'}
-                onClick={() => setView('week')}
+                onClick={() =>
+                  navigate({
+                    to: '/day/$date',
+                    params: { date: board.day },
+                    search: { edit: undefined, view: 'week' },
+                    replace: true,
+                  })
+                }
               >
                 Week
               </button>
@@ -635,7 +652,7 @@ export function TaskBoardPage({
                   navigate({
                     to: '/day/$date',
                     params: { date: shiftIsoDate(board.day, -navStep) },
-                    search: { edit: undefined },
+                    search: { edit: undefined, view: viewSearchValue },
                   })
                 }
               >
@@ -674,7 +691,7 @@ export function TaskBoardPage({
                     navigate({
                       to: '/day/$date',
                       params: { date: event.target.value },
-                      search: { edit: undefined },
+                      search: { edit: undefined, view: viewSearchValue },
                     })
                   }
                 />
@@ -688,7 +705,7 @@ export function TaskBoardPage({
                   navigate({
                     to: '/day/$date',
                     params: { date: shiftIsoDate(board.day, navStep) },
-                    search: { edit: undefined },
+                    search: { edit: undefined, view: viewSearchValue },
                   })
                 }
               >
@@ -796,15 +813,15 @@ export function TaskBoardPage({
                   navigate({
                     to: '/day/$date',
                     params: { date: day.day },
-                    search: { edit: undefined },
+                    search: { edit: undefined, view: 'week' },
+                    replace: true,
                   })
                 }
                 onOpenDay={() => {
-                  setView('day')
                   navigate({
                     to: '/day/$date',
                     params: { date: day.day },
-                    search: { edit: undefined },
+                    search: { edit: undefined, view: undefined },
                   })
                 }}
                 onSelectTask={(task) => setSelectedTaskId(task.id)}

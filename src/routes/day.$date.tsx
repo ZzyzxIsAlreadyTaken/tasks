@@ -5,6 +5,7 @@ import { loadBoard } from '~/server/task-board'
 export const Route = createFileRoute('/day/$date')({
   validateSearch: (search: Record<string, unknown>) => ({
     edit: typeof search.edit === 'string' ? search.edit : undefined,
+    view: search.view === 'week' ? ('week' as const) : undefined,
   }),
   loader: ({ params }) => loadBoard({ data: { day: params.date } }),
   component: DayRouteComponent,
@@ -12,6 +13,12 @@ export const Route = createFileRoute('/day/$date')({
 
 function DayRouteComponent() {
   const data = Route.useLoaderData()
-  const { edit } = Route.useSearch()
-  return <TaskBoardPage initialData={data} initialEditTaskId={edit ?? null} />
+  const { edit, view } = Route.useSearch()
+  return (
+    <TaskBoardPage
+      initialData={data}
+      initialEditTaskId={edit ?? null}
+      initialView={view === 'week' ? 'week' : 'day'}
+    />
+  )
 }

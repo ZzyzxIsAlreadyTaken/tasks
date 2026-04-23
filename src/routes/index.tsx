@@ -8,7 +8,7 @@ export const Route = createFileRoute('/')({
       params: {
         date: getTodayIsoDate(),
       },
-      search: { edit: undefined },
+      search: { edit: undefined, view: undefined },
     })
   },
 })
