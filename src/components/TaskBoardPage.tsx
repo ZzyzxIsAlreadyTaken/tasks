@@ -602,7 +602,7 @@ export function TaskBoardPage({
 
   const heroLabel =
     view === 'week' ? formatWeekRange(board.day) : formatHumanDate(board.day)
-  const weekNumber = view === 'week' ? getIsoWeekNumber(board.day) : null
+  const weekNumber = getIsoWeekNumber(board.day)
   const navStep = view === 'week' ? 7 : 1
   const previousLabel = view === 'week' ? 'Previous week' : 'Previous day'
   const nextLabel = view === 'week' ? 'Next week' : 'Next day'
@@ -676,9 +676,7 @@ export function TaskBoardPage({
                   aria-label="Pick date"
                 >
                   <span className="date-hero-title">
-                    {weekNumber !== null ? (
-                      <span className="week-eyebrow">Week {weekNumber}</span>
-                    ) : null}
+                    <span className="week-eyebrow">Week {weekNumber}</span>
                     <span>{heroLabel}</span>
                   </span>
                 </button>
