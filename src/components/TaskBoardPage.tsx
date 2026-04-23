@@ -24,10 +24,22 @@ import { useNavigate, useRouter } from '@tanstack/react-router'
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import {
   formatHumanDate,
-  formatShortDayLabel,
+  formatWeekRange,
+  getIsoDayOfMonth,
+  getIsoWeekNumber,
+  getIsoWeekdayShort,
+  isIsoToday,
+  isIsoWeekend,
   shiftIsoDate,
 } from '~/lib/dates'
-import type { BoardRouteData, BoardSnapshot, TaskDraft, TaskRecord } from '~/lib/task-board'
+import type {
+  BoardColumn,
+  BoardRouteData,
+  BoardSnapshot,
+  CategoryRecord,
+  TaskDraft,
+  TaskRecord,
+} from '~/lib/task-board'
 import { deleteTask, saveBoardOrder, saveTask } from '~/server/task-board'
 import { TaskEditorDrawer } from './TaskEditorDrawer'
 
@@ -120,6 +132,210 @@ function emptyDraft(board: BoardSnapshot, day: string): TaskDraft {
   }
 }
 
+function WeekDayCard({
+  day,
+  isSelected,
+  doneStatusId,
+  onOpenDay,
+  onSelectTask,
+  onQuickAdd,
+}: {
+  day: BoardSnapshot
+  isSelected: boolean
+  doneStatusId: string | null
+  onOpenDay: () => void
+  onSelectTask: (task: TaskRecord) => void
+  onQuickAdd: () => void
+}) {
+  const today = isIsoToday(day.day)
+  const weekend = isIsoWeekend(day.day)
+  const totalTasks = day.columns.reduce((sum, col) => sum + col.tasks.length, 0)
+
+  const classes = [
+    'week-day-card',
+    isSelected ? 'active' : '',
+    today ? 'is-today' : '',
+    weekend ? 'is-weekend' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    <div className={classes}>
+      <div className="week-day-header">
+        <div className="week-day-date-block">
+          <span className="week-day-weekday">{getIsoWeekdayShort(day.day)}</span>
+          <span className="week-day-date">{getIsoDayOfMonth(day.day)}</span>
+        </div>
+        <div className="week-day-meta">
+          {today ? <span className="week-today-pill">Today</span> : null}
+          <span className="week-day-count" aria-label={`${totalTasks} tasks`}>
+            {totalTasks}
+          </span>
+          <button
+            type="button"
+            className="week-quick-add"
+            aria-label={`Add task on ${day.day}`}
+            onClick={onQuickAdd}
+          >
+            <svg viewBox="0 0 20 20" width="20" height="20" focusable="false" aria-hidden="true">
+              <path
+                d="M10 4v12M4 10h12"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="2"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {totalTasks === 0 ? (
+        <div className="week-empty">No tasks</div>
+      ) : (
+        <div className="week-day-list">
+          {day.columns.map((column) =>
+            column.tasks.length > 0 ? (
+              <WeekStatusGroup
+                key={column.status.id}
+                column={column}
+                collapsible={column.status.id === doneStatusId}
+                onSelectTask={onSelectTask}
+              />
+            ) : null,
+          )}
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="week-day-open"
+        onClick={onOpenDay}
+        aria-label={`Open ${day.day} in day view`}
+      >
+        Open day →
+      </button>
+    </div>
+  )
+}
+
+function WeekStatusGroup({
+  column,
+  collapsible,
+  onSelectTask,
+}: {
+  column: BoardColumn
+  collapsible: boolean
+  onSelectTask: (task: TaskRecord) => void
+}) {
+  const body = (
+    <div className="week-status-items">
+      {column.tasks.map((task) => (
+        <WeekTaskRow
+          key={task.id}
+          task={task}
+          statusColor={column.status.color}
+          onSelect={() => onSelectTask(task)}
+        />
+      ))}
+    </div>
+  )
+
+  if (collapsible) {
+    return (
+      <details className="week-status-group">
+        <summary>
+          <span className="week-status-header">
+            <span
+              className="week-status-chevron"
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 20 20" width="20" height="20" focusable="false">
+                <path
+                  d="m7.5 5 5 5-5 5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                />
+              </svg>
+            </span>
+            <span
+              className="week-status-dot"
+              style={{ '--task-status-color': column.status.color } as React.CSSProperties}
+            />
+            <span className="week-status-name">{column.status.name}</span>
+            <span className="week-status-count">{column.tasks.length}</span>
+          </span>
+        </summary>
+        {body}
+      </details>
+    )
+  }
+
+  return (
+    <div className="week-status-group">
+      <div className="week-status-header">
+        <span
+          className="week-status-dot"
+          style={{ '--task-status-color': column.status.color } as React.CSSProperties}
+        />
+        <span className="week-status-name">{column.status.name}</span>
+        <span className="week-status-count">{column.tasks.length}</span>
+      </div>
+      {body}
+    </div>
+  )
+}
+
+function WeekTaskRow({
+  task,
+  statusColor,
+  onSelect,
+}: {
+  task: TaskRecord
+  statusColor: string
+  onSelect: () => void
+}) {
+  const visibleCategories = task.categories.slice(0, 2)
+  const overflowCount = task.categories.length - visibleCategories.length
+
+  return (
+    <button
+      type="button"
+      className="week-task-row"
+      style={{ '--task-status-color': statusColor } as React.CSSProperties}
+      onClick={onSelect}
+    >
+      <span className="week-task-dot" aria-hidden="true" />
+      <span className="week-task-title">{task.title}</span>
+      {task.categories.length > 0 ? (
+        <span className="week-task-chips">
+          {visibleCategories.map((category: CategoryRecord) => (
+            <span
+              key={category.id}
+              className="week-category-chip"
+              style={categoryAccentStyle(category.color)}
+              title={category.name}
+            >
+              {category.name}
+            </span>
+          ))}
+          {overflowCount > 0 ? (
+            <span className="week-category-chip more" title={`${overflowCount} more`}>
+              +{overflowCount}
+            </span>
+          ) : null}
+        </span>
+      ) : (
+        <span aria-hidden="true" />
+      )}
+    </button>
+  )
+}
+
 export function TaskBoardPage({
   initialData,
   initialEditTaskId = null,
@@ -140,6 +356,7 @@ export function TaskBoardPage({
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [view, setView] = useState<BoardView>('day')
+  const [isScrolled, setIsScrolled] = useState(false)
   const datePickerRef = useRef<HTMLInputElement | null>(null)
 
   const sensors = useSensors(
@@ -164,16 +381,41 @@ export function TaskBoardPage({
     }
   }, [initialEditTaskId])
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 6)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const board = data.board
   const week = data.week
 
-  const selectedTask = useMemo(
-    () =>
-      board.columns
+  const selectedTask = useMemo(() => {
+    if (!selectedTaskId) {
+      return null
+    }
+
+    const inBoard = board.columns
+      .flatMap((column) => column.tasks)
+      .find((task) => task.id === selectedTaskId)
+    if (inBoard) {
+      return inBoard
+    }
+
+    for (const weekDay of week.days) {
+      const match = weekDay.columns
         .flatMap((column) => column.tasks)
-        .find((task) => task.id === selectedTaskId) ?? null,
-    [board.columns, selectedTaskId],
-  )
+        .find((task) => task.id === selectedTaskId)
+      if (match) {
+        return match
+      }
+    }
+
+    return null
+  }, [board.columns, week.days, selectedTaskId])
 
   useEffect(() => {
     if (!selectedTask) {
@@ -291,9 +533,9 @@ export function TaskBoardPage({
     })
   }
 
-  function openComposerForNewTask() {
+  function openComposerForNewTask(options?: { day?: string }) {
     setSelectedTaskId(null)
-    setDraft(emptyDraft(board, board.day))
+    setDraft(emptyDraft(board, options?.day ?? board.day))
     setIsComposerOpen(true)
   }
 
@@ -331,126 +573,139 @@ export function TaskBoardPage({
           ),
   }))
 
+  const heroLabel =
+    view === 'week' ? formatWeekRange(board.day) : formatHumanDate(board.day)
+  const weekNumber = view === 'week' ? getIsoWeekNumber(board.day) : null
+
   return (
     <>
       <section className="board-page">
-        <div className="board-hero">
-          <div className="view-toggle" aria-label="Board view">
-            <button
-              type="button"
-              className={view === 'day' ? 'view-tab active' : 'view-tab'}
-              onClick={() => setView('day')}
-            >
-              Day
-            </button>
-            <button
-              type="button"
-              className={view === 'week' ? 'view-tab active' : 'view-tab'}
-              onClick={() => setView('week')}
-            >
-              Week
-            </button>
-          </div>
-
-          <div className="date-hero-group">
-            <button
-              type="button"
-              className="nav-arrow inline"
-              aria-label="Previous day"
-              onClick={() =>
-                navigate({
-                  to: '/day/$date',
-                  params: { date: shiftIsoDate(board.day, -1) },
-                  search: { edit: undefined },
-                })
-              }
-            >
-              <svg viewBox="0 0 20 20" width="20" height="20" focusable="false" aria-hidden="true">
-                <path
-                  d="M12.5 5 7.5 10l5 5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.7"
-                />
-              </svg>
-            </button>
-
-            <div className="date-title-picker">
+        <div className={isScrolled ? 'board-sticky is-scrolled' : 'board-sticky'}>
+          <div className="board-hero">
+            <div className="view-toggle" aria-label="Board view">
               <button
                 type="button"
-                className="date-picker-trigger"
-                onClick={openDatePicker}
-                aria-label="Pick date"
+                className={view === 'day' ? 'view-tab active' : 'view-tab'}
+                onClick={() => setView('day')}
               >
-                <span>{formatHumanDate(board.day)}</span>
+                Day
               </button>
-              <input
-                ref={datePickerRef}
-                aria-label="Selected day"
-                type="date"
-                value={board.day}
-                onChange={(event) =>
+              <button
+                type="button"
+                className={view === 'week' ? 'view-tab active' : 'view-tab'}
+                onClick={() => setView('week')}
+              >
+                Week
+              </button>
+            </div>
+
+            <div className="date-hero-group">
+              <button
+                type="button"
+                className="nav-arrow inline"
+                aria-label="Previous day"
+                onClick={() =>
                   navigate({
                     to: '/day/$date',
-                    params: { date: event.target.value },
+                    params: { date: shiftIsoDate(board.day, -1) },
                     search: { edit: undefined },
                   })
                 }
-              />
-            </div>
+              >
+                <svg viewBox="0 0 20 20" width="20" height="20" focusable="false" aria-hidden="true">
+                  <path
+                    d="M12.5 5 7.5 10l5 5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.7"
+                  />
+                </svg>
+              </button>
 
-            <button
-              type="button"
-              className="nav-arrow inline"
-              aria-label="Next day"
-              onClick={() =>
-                navigate({
-                  to: '/day/$date',
-                  params: { date: shiftIsoDate(board.day, 1) },
-                  search: { edit: undefined },
-                })
-              }
-            >
-              <svg viewBox="0 0 20 20" width="20" height="20" focusable="false" aria-hidden="true">
-                <path
-                  d="m7.5 5 5 5-5 5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.7"
+              <div className="date-title-picker">
+                <button
+                  type="button"
+                  className="date-picker-trigger"
+                  onClick={openDatePicker}
+                  aria-label="Pick date"
+                >
+                  <span className="date-hero-title">
+                    {weekNumber !== null ? (
+                      <span className="week-eyebrow">Week {weekNumber}</span>
+                    ) : null}
+                    <span>{heroLabel}</span>
+                  </span>
+                </button>
+                <input
+                  ref={datePickerRef}
+                  aria-label="Selected day"
+                  type="date"
+                  value={board.day}
+                  onChange={(event) =>
+                    navigate({
+                      to: '/day/$date',
+                      params: { date: event.target.value },
+                      search: { edit: undefined },
+                    })
+                  }
                 />
-              </svg>
-            </button>
-          </div>
-        </div>
+              </div>
 
-        <div className="board-toolbar">
-          <div className="filter-row">
-            <button
-              type="button"
-              className={categoryFilter == null ? 'filter-pill active' : 'filter-pill'}
-              onClick={() => setCategoryFilter(null)}
-            >
-              All
-            </button>
-            {board.allCategories.map((category) => (
               <button
-                key={category.id}
                 type="button"
-                className={categoryFilter === category.id ? 'filter-pill active' : 'filter-pill'}
-                style={categoryAccentStyle(category.color)}
+                className="nav-arrow inline"
+                aria-label="Next day"
                 onClick={() =>
-                  setCategoryFilter((current) =>
-                    current === category.id ? null : category.id,
-                  )
+                  navigate({
+                    to: '/day/$date',
+                    params: { date: shiftIsoDate(board.day, 1) },
+                    search: { edit: undefined },
+                  })
                 }
               >
-                {category.name}
+                <svg viewBox="0 0 20 20" width="20" height="20" focusable="false" aria-hidden="true">
+                  <path
+                    d="m7.5 5 5 5-5 5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.7"
+                  />
+                </svg>
               </button>
-            ))}
+            </div>
+          </div>
+
+          <div className="board-toolbar">
+            <div className="filter-row">
+              <button
+                type="button"
+                className={categoryFilter == null ? 'filter-pill active' : 'filter-pill'}
+                onClick={() => setCategoryFilter(null)}
+              >
+                All
+              </button>
+              {board.allCategories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={
+                    categoryFilter === category.id ? 'filter-pill active' : 'filter-pill'
+                  }
+                  style={categoryAccentStyle(category.color)}
+                  onClick={() =>
+                    setCategoryFilter((current) =>
+                      current === category.id ? null : category.id,
+                    )
+                  }
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -505,42 +760,21 @@ export function TaskBoardPage({
         ) : (
           <div className="week-grid">
             {week.days.map((day) => (
-              <button
+              <WeekDayCard
                 key={day.day}
-                type="button"
-                className={day.day === board.day ? 'week-day-card active' : 'week-day-card'}
-                onClick={() =>
+                day={day}
+                isSelected={day.day === board.day}
+                doneStatusId={doneStatusId}
+                onOpenDay={() =>
                   navigate({
                     to: '/day/$date',
                     params: { date: day.day },
                     search: { edit: undefined },
                   })
                 }
-              >
-                <div className="week-day-header">
-                  <strong>{formatShortDayLabel(day.day)}</strong>
-                  <span>{day.columns.reduce((sum, column) => sum + column.tasks.length, 0)}</span>
-                </div>
-                <div className="week-day-list">
-                  {day.columns
-                    .flatMap((column) =>
-                      column.tasks.map((task) => ({
-                        ...task,
-                        statusName: column.status.name,
-                      })),
-                    )
-                    .slice(0, 6)
-                    .map((task) => (
-                      <div key={task.id} className="week-task-row">
-                        <span>{task.title}</span>
-                        <em>{task.statusName}</em>
-                      </div>
-                    ))}
-                  {day.columns.flatMap((column) => column.tasks).length === 0 ? (
-                    <div className="week-empty">No tasks</div>
-                  ) : null}
-                </div>
-              </button>
+                onSelectTask={(task) => setSelectedTaskId(task.id)}
+                onQuickAdd={() => openComposerForNewTask({ day: day.day })}
+              />
             ))}
           </div>
         )}
@@ -549,7 +783,7 @@ export function TaskBoardPage({
           type="button"
           className="floating-add"
           aria-label="Add task"
-          onClick={openComposerForNewTask}
+          onClick={() => openComposerForNewTask()}
         >
           <svg viewBox="0 0 20 20" focusable="false">
             <path

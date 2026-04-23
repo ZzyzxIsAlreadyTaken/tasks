@@ -114,11 +114,47 @@
     gap: 1rem;
   }
 
+  .board-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: -0.4rem -2rem 0;
+    padding: 0.6rem 2rem 0.75rem;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease;
+  }
+
+  .board-sticky.is-scrolled {
+    border-bottom-color: var(--line);
+  }
+
   .board-hero {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem 1.25rem;
+  }
+
+  .date-hero-title {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.08rem;
+    line-height: 1.1;
+  }
+
+  .date-hero-title .week-eyebrow {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
   }
 
   .date-hero-group {
@@ -342,69 +378,298 @@
   }
 
   .week-day-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.8rem;
+    gap: 0.7rem;
     min-height: 15rem;
-    padding: 0.9rem;
+    padding: 0.85rem 0.9rem 0.9rem;
     border: 1px solid var(--line);
     border-radius: 1rem;
     background: var(--panel);
     text-align: left;
     box-shadow: var(--shadow);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .week-day-card.is-weekend {
+    background: color-mix(in srgb, var(--bg) 70%, var(--panel));
+  }
+
+  .week-day-card.is-weekend .week-day-weekday,
+  .week-day-card.is-weekend .week-day-date,
+  .week-day-card.is-weekend .week-day-count {
+    color: var(--muted);
+  }
+
+  .week-day-card.is-today {
+    background: color-mix(in srgb, #4a6cf7 5%, var(--panel));
+    border-color: color-mix(in srgb, #4a6cf7 28%, var(--line));
   }
 
   .week-day-card.active {
-    border-color: var(--line-strong);
+    border-color: color-mix(in srgb, #4a6cf7 55%, var(--line-strong));
+    box-shadow:
+      inset 3px 0 0 #4a6cf7,
+      var(--shadow);
   }
 
   .week-day-header {
     display: flex;
-    align-items: baseline;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
 
-  .week-day-header strong {
-    font-size: 0.95rem;
+  .week-day-date-block {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
   }
 
-  .week-day-header span {
+  .week-day-weekday {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .week-day-date {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .week-day-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .week-today-pill {
+    padding: 0.1rem 0.42rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, #4a6cf7 18%, #fff);
+    color: color-mix(in srgb, #4a6cf7 78%, #1c2541);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .week-day-count {
     color: var(--muted-soft);
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+    line-height: 1;
+  }
+
+  .week-quick-add {
+    width: 1.6rem;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    display: inline-grid;
+    place-items: center;
+    line-height: 0;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .week-quick-add:hover,
+  .week-quick-add:focus-visible {
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+    color: var(--text);
+    border-color: var(--line);
+  }
+
+  .week-quick-add svg {
+    width: 0.85rem;
+    height: 0.85rem;
+    display: block;
   }
 
   .week-day-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.55rem;
+  }
+
+  .week-status-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .week-status-group[open] > summary .week-status-chevron {
+    transform: rotate(90deg);
+  }
+
+  .week-status-group summary {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .week-status-group summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .week-status-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .week-status-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--task-status-color, var(--muted-soft));
+    flex-shrink: 0;
+  }
+
+  .week-status-name {
+    color: var(--text);
+  }
+
+  .week-status-count {
+    color: var(--muted-soft);
+    font-weight: 600;
+  }
+
+  .week-status-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-soft);
+    transition: transform 0.15s ease;
+  }
+
+  .week-status-chevron svg {
+    width: 0.6rem;
+    height: 0.6rem;
+    display: block;
+  }
+
+  .week-status-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    margin-top: 0.25rem;
   }
 
   .week-task-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.55rem 0.6rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.42rem 0.55rem;
     border: 1px solid var(--line);
-    border-radius: 0.7rem;
+    border-radius: 0.6rem;
     background: #fbfbfa;
+    color: inherit;
+    text-align: left;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
   }
 
-  .week-task-row span {
-    font-size: 0.84rem;
-    line-height: 1.25;
+  .week-task-row:hover,
+  .week-task-row:focus-visible {
+    border-color: color-mix(in srgb, var(--task-status-color, var(--line-strong)) 55%, var(--line));
+    background: #fff;
   }
 
-  .week-task-row em {
-    color: var(--muted-soft);
-    font-size: 0.74rem;
-    font-style: normal;
+  .week-task-row .week-task-dot {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 999px;
+    background: var(--task-status-color, var(--muted-soft));
+    flex-shrink: 0;
+  }
+
+  .week-task-title {
+    font-size: 0.82rem;
+    line-height: 1.3;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+  }
+
+  .week-task-chips {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    flex-shrink: 0;
+  }
+
+  .week-category-chip {
+    --category-color: #7f7f7a;
+    display: inline-flex;
+    align-items: center;
+    height: 1rem;
+    padding: 0 0.38rem;
+    border: 1px solid color-mix(in srgb, var(--category-color) 35%, var(--line));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--category-color) 14%, #fff);
+    color: color-mix(in srgb, var(--category-color) 74%, #364052);
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    white-space: nowrap;
+    max-width: 6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .week-category-chip.more {
+    background: #f3f3f0;
+    border-color: var(--line);
+    color: var(--muted);
   }
 
   .week-empty {
     color: var(--muted-soft);
     font-size: 0.82rem;
+    padding: 0.5rem 0.1rem;
+  }
+
+  .week-day-open {
+    margin-top: auto;
+    padding: 0.3rem 0;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    background: transparent;
+    border: 0;
+    border-top: 1px dashed var(--line);
+    text-align: left;
+    cursor: pointer;
+    min-height: 0;
+    border-radius: 0;
+    transition: color 0.12s ease;
+  }
+
+  .week-day-open:hover,
+  .week-day-open:focus-visible {
+    color: var(--text);
   }
 
   .status-column {
@@ -1090,6 +1355,11 @@
   @media (max-width: 720px) {
     .app-shell {
       padding: 1rem;
+    }
+
+    .board-sticky {
+      margin: -0.4rem -1rem 0;
+      padding: 0.5rem 1rem 0.6rem;
     }
 
     .topbar,
