@@ -46,6 +46,16 @@ export type BoardRouteData = {
   week: WeekSnapshot
 }
 
+export type OverviewTaskRecord = TaskRecord & {
+  status: StatusRecord | null
+}
+
+export type OverviewSnapshot = {
+  tasks: OverviewTaskRecord[]
+  statuses: StatusRecord[]
+  categories: CategoryRecord[]
+}
+
 export type SettingsSnapshot = {
   statuses: Array<StatusRecord & { taskCount: number }>
   categories: Array<CategoryRecord & { taskCount: number }>

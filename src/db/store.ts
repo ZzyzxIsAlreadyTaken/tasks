@@ -5,6 +5,7 @@ import { assertIsoDate } from '~/lib/dates'
 import type {
   BoardSnapshot,
   CategoryRecord,
+  OverviewSnapshot,
   SaveBoardOrderInput,
   SettingsSnapshot,
   StatusRecord,
@@ -183,6 +184,57 @@ export function createTaskBoardStore(db: Database) {
         })),
         allStatuses,
         allCategories: activeCategories,
+      }
+    },
+
+    async getOverview(): Promise<OverviewSnapshot> {
+      const allStatuses = await db
+        .select()
+        .from(statuses)
+        .orderBy(asc(statuses.position), asc(statuses.name))
+      const activeCategories = await db
+        .select()
+        .from(categories)
+        .where(eq(categories.isArchived, false))
+        .orderBy(asc(categories.position), asc(categories.name))
+      const allTasks = await db
+        .select()
+        .from(tasks)
+        .orderBy(asc(tasks.day), asc(tasks.position), asc(tasks.createdAt))
+
+      const taskIds = allTasks.map((task) => task.id)
+      const categoryRows =
+        taskIds.length > 0
+          ? await db
+              .select({
+                taskId: taskCategories.taskId,
+                id: categories.id,
+                name: categories.name,
+                color: categories.color,
+                position: categories.position,
+                isArchived: categories.isArchived,
+              })
+              .from(taskCategories)
+              .innerJoin(categories, eq(taskCategories.categoryId, categories.id))
+              .where(inArray(taskCategories.taskId, taskIds))
+              .orderBy(asc(categories.position), asc(categories.name))
+          : []
+      const categoriesByTask = groupCategoriesByTask(categoryRows)
+      const statusById = new Map(allStatuses.map((status) => [status.id, status]))
+
+      return {
+        tasks: allTasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          day: task.day,
+          statusId: task.statusId,
+          position: task.position,
+          categories: categoriesByTask[task.id] ?? [],
+          status: statusById.get(task.statusId) ?? null,
+        })),
+        statuses: allStatuses,
+        categories: activeCategories,
       }
     },
 

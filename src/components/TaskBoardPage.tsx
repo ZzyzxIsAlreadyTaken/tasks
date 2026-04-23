@@ -29,6 +29,7 @@ import {
 } from '~/lib/dates'
 import type { BoardRouteData, BoardSnapshot, TaskDraft, TaskRecord } from '~/lib/task-board'
 import { deleteTask, saveBoardOrder, saveTask } from '~/server/task-board'
+import { TaskEditorDrawer } from './TaskEditorDrawer'
 
 type BoardView = 'day' | 'week'
 
@@ -103,6 +104,12 @@ function categoryAccentStyle(color: string | null): React.CSSProperties {
   } as React.CSSProperties
 }
 
+function taskStatusAccentStyle(color: string): React.CSSProperties {
+  return {
+    '--task-status-color': color,
+  } as React.CSSProperties
+}
+
 function emptyDraft(board: BoardSnapshot, day: string): TaskDraft {
   return {
     title: '',
@@ -113,11 +120,19 @@ function emptyDraft(board: BoardSnapshot, day: string): TaskDraft {
   }
 }
 
-export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) {
+export function TaskBoardPage({
+  initialData,
+  initialEditTaskId = null,
+}: {
+  initialData: BoardRouteData
+  initialEditTaskId?: string | null
+}) {
   const navigate = useNavigate()
   const router = useRouter()
   const [data, setData] = useState(initialData)
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
+    initialEditTaskId,
+  )
   const [draft, setDraft] = useState<TaskDraft>(() =>
     emptyDraft(initialData.board, initialData.board.day),
   )
@@ -142,6 +157,12 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
       current.id ? current : emptyDraft(initialData.board, initialData.board.day),
     )
   }, [initialData])
+
+  useEffect(() => {
+    if (initialEditTaskId) {
+      setSelectedTaskId(initialEditTaskId)
+    }
+  }, [initialEditTaskId])
 
   const board = data.board
   const week = data.week
@@ -340,12 +361,13 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                 navigate({
                   to: '/day/$date',
                   params: { date: shiftIsoDate(board.day, -1) },
+                  search: { edit: undefined },
                 })
               }
             >
-              <svg viewBox="0 0 20 20" focusable="false">
+              <svg viewBox="0 0 20 20" width="20" height="20" focusable="false" aria-hidden="true">
                 <path
-                  d="M11.5 4.5 6 10l5.5 5.5"
+                  d="M12.5 5 7.5 10l5 5"
                   fill="none"
                   stroke="currentColor"
                   strokeLinecap="round"
@@ -373,6 +395,7 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                   navigate({
                     to: '/day/$date',
                     params: { date: event.target.value },
+                    search: { edit: undefined },
                   })
                 }
               />
@@ -386,12 +409,13 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                 navigate({
                   to: '/day/$date',
                   params: { date: shiftIsoDate(board.day, 1) },
+                  search: { edit: undefined },
                 })
               }
             >
-              <svg viewBox="0 0 20 20" focusable="false">
+              <svg viewBox="0 0 20 20" width="20" height="20" focusable="false" aria-hidden="true">
                 <path
-                  d="m8.5 4.5 5.5 5.5-5.5 5.5"
+                  d="m7.5 5 5 5-5 5"
                   fill="none"
                   stroke="currentColor"
                   strokeLinecap="round"
@@ -489,6 +513,7 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
                   navigate({
                     to: '/day/$date',
                     params: { date: day.day },
+                    search: { edit: undefined },
                   })
                 }
               >
@@ -536,153 +561,20 @@ export function TaskBoardPage({ initialData }: { initialData: BoardRouteData }) 
               strokeWidth="1.8"
             />
           </svg>
+          <span>Add task</span>
         </button>
       </section>
 
-      <div
-        className={isComposerOpen ? 'drawer-backdrop visible' : 'drawer-backdrop'}
-        onClick={closeComposer}
+      <TaskEditorDrawer
+        open={isComposerOpen}
+        draft={draft}
+        setDraft={setDraft}
+        statuses={board.allStatuses}
+        categories={board.allCategories}
+        onClose={closeComposer}
+        onSave={handleSaveTask}
+        onDelete={handleDeleteTask}
       />
-      <aside className={isComposerOpen ? 'task-drawer open' : 'task-drawer'}>
-        <div className="drawer-header">
-          <div>
-            <p className="eyebrow">{draft.id ? 'Edit Task' : 'Add Task'}</p>
-            <h3>{draft.id ? 'Update task details' : 'Create a task for the day'}</h3>
-          </div>
-          <button
-            type="button"
-            className="nav-arrow"
-            onClick={closeComposer}
-            aria-label="Close editor"
-          >
-            <svg viewBox="0 0 20 20" focusable="false">
-              <path
-                d="m5 5 10 10M15 5 5 15"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.6"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <form className="task-form minimal" onSubmit={(event) => void handleSaveTask(event)}>
-          <label>
-            Title
-            <input
-              required
-              placeholder="What needs doing?"
-              value={draft.title}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, title: event.target.value }))
-              }
-            />
-          </label>
-          <label>
-            Notes
-            <textarea
-              rows={5}
-              placeholder="Optional details"
-              value={draft.description}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  description: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <div className="two-up">
-            <label>
-              Day
-              <input
-                type="date"
-                value={draft.day}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, day: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              Status
-              <select
-                value={draft.statusId}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    statusId: event.target.value,
-                  }))
-                }
-              >
-                {board.allStatuses
-                  .filter(
-                    (status) =>
-                      !status.isArchived || status.id === draft.statusId,
-                  )
-                  .map((status) => (
-                    <option key={status.id} value={status.id}>
-                      {status.name}
-                      {status.isArchived ? ' (archived)' : ''}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-          <fieldset>
-            <legend>Categories</legend>
-            <div className="category-picker">
-              {board.allCategories.map((category) => {
-                const isChecked = draft.categoryIds.includes(category.id)
-                return (
-                  <label key={category.id} className="checkbox-pill">
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() =>
-                        setDraft((current) => ({
-                          ...current,
-                          categoryIds: isChecked
-                            ? current.categoryIds.filter((id) => id !== category.id)
-                            : [...current.categoryIds, category.id],
-                        }))
-                      }
-                    />
-                    <span
-                      className={
-                        isChecked
-                          ? 'checkbox-pill-label selected'
-                          : 'checkbox-pill-label'
-                      }
-                      style={categoryAccentStyle(category.color)}
-                    >
-                      {category.name}
-                    </span>
-                  </label>
-                )
-              })}
-            </div>
-          </fieldset>
-          <div className="form-actions">
-            <button type="submit" className="primary">
-              {draft.id ? 'Save task' : 'Add task'}
-            </button>
-            <button type="button" className="secondary" onClick={closeComposer}>
-              Cancel
-            </button>
-            {draft.id ? (
-              <button
-                type="button"
-                className="danger"
-                onClick={() => void handleDeleteTask(draft.id!)}
-              >
-                Delete
-              </button>
-            ) : null}
-          </div>
-        </form>
-      </aside>
     </>
   )
 }
@@ -722,10 +614,11 @@ function StatusColumn({
             <TaskCard
               key={task.id}
               task={task}
+              statusColor={column.status.color}
               onSelect={() => onSelectTask(task)}
               onQuickComplete={() => onQuickComplete(task)}
               onEdit={() => onSelectTask(task)}
-              quickCompleteEnabled={doneStatusId != null && task.statusId !== doneStatusId}
+              doneStatusId={doneStatusId}
               isDraggingTask={activeTaskId === task.id}
             />
           ))}
@@ -740,19 +633,24 @@ function StatusColumn({
 
 function TaskCard({
   task,
+  statusColor,
   onSelect,
   onQuickComplete,
   onEdit,
-  quickCompleteEnabled,
+  doneStatusId,
   isDraggingTask,
 }: {
   task: TaskRecord
+  statusColor: string
   onSelect: () => void
   onQuickComplete: () => void
   onEdit: () => void
-  quickCompleteEnabled: boolean
+  doneStatusId: string | null
   isDraggingTask: boolean
 }) {
+  const showCompleteControl = doneStatusId != null
+  const isCompleted = doneStatusId != null && task.statusId === doneStatusId
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
       id: task.id,
@@ -764,6 +662,7 @@ function TaskCard({
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
+        ...taskStatusAccentStyle(statusColor),
       }}
       className={isDragging ? 'task-card dragging' : 'task-card'}
       {...attributes}
@@ -784,29 +683,33 @@ function TaskCard({
         <div className="task-heading">
           <h4>{task.title}</h4>
           <div className="task-trailing">
-            {quickCompleteEnabled ? (
+            {showCompleteControl ? (
               <button
                 type="button"
                 className="complete-toggle"
-                aria-label={`Mark ${task.title} done`}
-                title="Mark done"
+                aria-label={isCompleted ? `${task.title} completed` : `Mark ${task.title} done`}
+                title={isCompleted ? 'Completed' : 'Mark done'}
+                disabled={isCompleted}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.stopPropagation()
-                  onQuickComplete()
                 }}
               >
-                <svg viewBox="0 0 20 20" focusable="false" aria-hidden="true">
-                  <path
-                    d="M5 4.75h10a.75.75 0 0 1 .75.75v10a.75.75 0 0 1-.75.75H5a.75.75 0 0 1-.75-.75v-10A.75.75 0 0 1 5 4.75Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.4"
-                  />
-                </svg>
-                <span>Mark completed</span>
+                <input
+                  type="checkbox"
+                  className="complete-checkbox"
+                  aria-label={isCompleted ? `${task.title} completed` : `Complete ${task.title}`}
+                  checked={isCompleted}
+                  disabled={isCompleted}
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => {
+                    event.stopPropagation()
+                    if (!isCompleted) {
+                      onQuickComplete()
+                    }
+                  }}
+                />
+                <span>{isCompleted ? 'Completed' : 'Mark completed'}</span>
               </button>
             ) : null}
             <button

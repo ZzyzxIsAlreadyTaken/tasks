@@ -5,11 +5,13 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useNavigate,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
+import { signOutCurrentSession } from '~/server/auth-functions'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
@@ -71,6 +73,8 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate()
+
   return (
     <html lang="en">
       <head>
@@ -83,7 +87,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               Daily Task Board
             </Link>
             <nav className="topnav">
+              <Link to="/overview">Overview</Link>
               <Link to="/settings">Settings</Link>
+              <button
+                type="button"
+                className="secondary compact-nav"
+                onClick={() =>
+                  void signOutCurrentSession().then(() => {
+                    void navigate({ to: '/signin', search: { error: undefined } })
+                  })
+                }
+              >
+                Sign out
+              </button>
             </nav>
           </header>
           <main>{children}</main>

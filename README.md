@@ -16,6 +16,8 @@ A local-first task board built with `TanStack Start`, `Drizzle ORM`, and `Postgr
 ```sh
 docker compose up -d
 export DATABASE_URL=postgresql://taskboard:taskboard@localhost:5432/taskboard
+export APP_SHARED_PASSWORD=change-me
+export SESSION_SECRET=change-this-to-a-long-random-value
 npm install
 npm run dev
 ```
@@ -31,6 +33,13 @@ npm run db:generate
 ```
 
 The app reads `DATABASE_URL` for database access.
+
+Auth-related environment variables:
+
+- `APP_SHARED_PASSWORD`: shared sign-in password required before using the app
+- `SESSION_SECRET`: secret used to encrypt and sign session cookies
+
+Set these locally in your `.env` file and in production using platform secrets (for example Railway variables).
 
 Run schema migrations:
 

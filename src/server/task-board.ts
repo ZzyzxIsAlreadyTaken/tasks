@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { createServerFn } from '@tanstack/react-start'
 import { getTaskBoardStore } from '~/db/client'
 import { getWeekIsoDates } from '~/lib/dates'
+import { requireSignedIn } from './auth'
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
@@ -39,6 +40,7 @@ const categorySchema = z.object({
 export const loadBoard = createServerFn({ method: 'GET' })
   .inputValidator((input: { day: string }) => ({ day: isoDateSchema.parse(input.day) }))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.seedDefaults()
     const board = await store.getBoard(data.day)
@@ -54,9 +56,17 @@ export const loadBoard = createServerFn({ method: 'GET' })
     }
   })
 
+export const loadOverview = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireSignedIn()
+  const store = await getTaskBoardStore()
+  await store.seedDefaults()
+  return store.getOverview()
+})
+
 export const saveTask = createServerFn({ method: 'POST' })
   .inputValidator((input) => taskDraftSchema.parse(input))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.seedDefaults()
     return store.saveTask(data)
@@ -65,6 +75,7 @@ export const saveTask = createServerFn({ method: 'POST' })
 export const deleteTask = createServerFn({ method: 'POST' })
   .inputValidator((input: { taskId: string }) => ({ taskId: z.string().parse(input.taskId) }))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.deleteTask(data.taskId)
     return { ok: true }
@@ -73,12 +84,14 @@ export const deleteTask = createServerFn({ method: 'POST' })
 export const saveBoardOrder = createServerFn({ method: 'POST' })
   .inputValidator((input) => boardOrderSchema.parse(input))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.saveBoardOrder(data)
     return { ok: true }
   })
 
 export const loadSettings = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireSignedIn()
   const store = await getTaskBoardStore()
   await store.seedDefaults()
   return store.getSettings()
@@ -87,6 +100,7 @@ export const loadSettings = createServerFn({ method: 'GET' }).handler(async () =
 export const saveStatus = createServerFn({ method: 'POST' })
   .inputValidator((input) => statusSchema.parse(input))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     return store.upsertStatus(data)
   })
@@ -94,6 +108,7 @@ export const saveStatus = createServerFn({ method: 'POST' })
 export const reorderStatuses = createServerFn({ method: 'POST' })
   .inputValidator((input: { ids: string[] }) => ({ ids: z.array(z.string()).parse(input.ids) }))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.reorderStatuses(data.ids)
     return { ok: true }
@@ -102,6 +117,7 @@ export const reorderStatuses = createServerFn({ method: 'POST' })
 export const archiveStatus = createServerFn({ method: 'POST' })
   .inputValidator((input: { id: string }) => ({ id: z.string().parse(input.id) }))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.archiveStatus(data.id)
     return { ok: true }
@@ -110,6 +126,7 @@ export const archiveStatus = createServerFn({ method: 'POST' })
 export const saveCategory = createServerFn({ method: 'POST' })
   .inputValidator((input) => categorySchema.parse(input))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     return store.upsertCategory(data)
   })
@@ -117,6 +134,7 @@ export const saveCategory = createServerFn({ method: 'POST' })
 export const reorderCategories = createServerFn({ method: 'POST' })
   .inputValidator((input: { ids: string[] }) => ({ ids: z.array(z.string()).parse(input.ids) }))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.reorderCategories(data.ids)
     return { ok: true }
@@ -125,6 +143,7 @@ export const reorderCategories = createServerFn({ method: 'POST' })
 export const archiveCategory = createServerFn({ method: 'POST' })
   .inputValidator((input: { id: string }) => ({ id: z.string().parse(input.id) }))
   .handler(async ({ data }) => {
+    await requireSignedIn()
     const store = await getTaskBoardStore()
     await store.archiveCategory(data.id)
     return { ok: true }
